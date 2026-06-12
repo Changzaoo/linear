@@ -917,6 +917,94 @@ function FloatingShelves({ freijo }: { freijo: THREE.Texture }) {
   );
 }
 
+/* ---------- Cristaleira alta com portas de vidro e LED ---------- */
+function TallCabinet({ nogueira, freijo }: { nogueira: THREE.Texture; freijo: THREE.Texture }) {
+  return (
+    // Construída de frente para +z e girada para a sala (-x)
+    <group rotation={[0, -Math.PI / 2, 0]}>
+      <ContactShadow size={[2.2, 1.2]} />
+      {/* Base recuada */}
+      <mesh position={[0, 0.06, 0]}>
+        <boxGeometry args={[1.42, 0.12, 0.5]} />
+        <meshStandardMaterial {...FIN.black} transparent />
+      </mesh>
+      {/* Laterais, fundo, teto e piso do móvel */}
+      {[-0.72, 0.72].map((x, i) => (
+        <mesh key={i} position={[x, 1.31, 0]}>
+          <boxGeometry args={[0.06, 2.38, 0.55]} />
+          <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.31, -0.255]}>
+        <boxGeometry args={[1.38, 2.38, 0.04]} />
+        <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
+      </mesh>
+      <mesh position={[0, 0.15, 0]}>
+        <boxGeometry args={[1.38, 0.06, 0.55]} />
+        <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
+      </mesh>
+      <mesh position={[0, 2.47, 0]}>
+        <boxGeometry args={[1.38, 0.06, 0.55]} />
+        <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
+      </mesh>
+      {/* Coroamento em latão */}
+      <mesh position={[0, 2.515, 0]}>
+        <boxGeometry args={[1.54, 0.03, 0.6]} />
+        <meshStandardMaterial {...FIN.brass} transparent />
+      </mesh>
+      {/* Prateleiras internas com LED */}
+      {[0.7, 1.3, 1.9].map((y, i) => (
+        <group key={i}>
+          <mesh position={[0, y, 0]}>
+            <boxGeometry args={[1.38, 0.04, 0.48]} />
+            <meshStandardMaterial map={freijo} roughness={0.5} transparent />
+          </mesh>
+          <mesh position={[0, y - 0.026, 0.2]}>
+            <boxGeometry args={[1.3, 0.012, 0.02]} />
+            <meshStandardMaterial {...FIN.led} transparent />
+          </mesh>
+        </group>
+      ))}
+      {/* Portas de vidro emolduradas em latão (face z 0.275) */}
+      {[-0.355, 0.355].map((x, i) => (
+        <group key={i} position={[x, 1.31, 0.275]}>
+          <mesh userData={{ baseOpacity: 0.16 }}>
+            <boxGeometry args={[0.66, 2.26, 0.015]} />
+            <meshStandardMaterial {...FIN.glass} transparent />
+          </mesh>
+          {/* Montantes e travessas da porta */}
+          {[-0.33, 0.33].map((dx, j) => (
+            <mesh key={j} position={[dx, 0, 0]}>
+              <boxGeometry args={[0.025, 2.26, 0.025]} />
+              <meshStandardMaterial {...FIN.brass} transparent />
+            </mesh>
+          ))}
+          {[-1.13, 1.13].map((dy, j) => (
+            <mesh key={`h-${j}`} position={[0, dy, 0]}>
+              <boxGeometry args={[0.68, 0.025, 0.025]} />
+              <meshStandardMaterial {...FIN.brass} transparent />
+            </mesh>
+          ))}
+          {/* Puxador vertical */}
+          <mesh position={[i === 0 ? 0.28 : -0.28, 0, 0.03]}>
+            <boxGeometry args={[0.018, 0.32, 0.018]} />
+            <meshStandardMaterial {...FIN.brass} transparent />
+          </mesh>
+        </group>
+      ))}
+      {/* Peças expostas (superfícies das prateleiras / piso do móvel) */}
+      <Vase position={[-0.35, 0.18, 0.05]} height={0.3} radius={0.07} color="#d9cfbc" />
+      <BookStack position={[0.3, 0.18, 0]} />
+      <Vase position={[0.35, 0.72, 0.02]} height={0.22} radius={0.05} color="#b89a6a" />
+      <PerfumeBottle position={[-0.25, 0.72, 0.05]} />
+      <BookStack position={[-0.3, 1.32, 0]} />
+      <GlassSphere position={[0.3, 1.38, 0.02]} r={0.05} />
+      <Vase position={[0.0, 1.92, 0.02]} height={0.26} radius={0.055} />
+      <SmallPlant position={[-0.4, 1.92, 0.02]} />
+    </group>
+  );
+}
+
 /* ---------- Blueprint: linhas técnicas que guiam a montagem ---------- */
 type Vec3 = [number, number, number];
 
@@ -1057,6 +1145,7 @@ function Blueprint({ progress }: { progress: Progress }) {
       <BlueprintBox size={[1.1, 0.85, 1.1]} position={[2.6, 0.43, 3.4]} />
       <BlueprintBox size={[1.9, 1.4, 0.9]} position={[-0.6, 0.7, -2.4]} />
       <BlueprintBox size={[1.4, 1.1, 0.7]} position={[3.0, 0.55, 1.7]} />
+      <BlueprintBox size={[0.6, 2.55, 1.6]} position={[6.0, 1.27, -2.0]} />
     </group>
   );
 }
@@ -1462,6 +1551,31 @@ function AssemblyScene({ progress }: { progress: Progress }) {
         <GlassVitrine nogueira={T.nogueira} stone={T.stone} />
       </Piece>
 
+      {/* ===== Canto direito: cristaleira alta de frente para a sala
+            (nichos da parede vão até x 5.55; estante termina em x 4.4) ===== */}
+      <Piece progress={progress} window={[0.61, 0.73]} from={[9.8, 0, -2.0]} to={[6.0, 0, -2.0]}>
+        <TallCabinet nogueira={T.nogueira} freijo={T.freijo} />
+      </Piece>
+
+      {/* ===== Canto direito frontal: poltrona + mesinha de apoio ===== */}
+      {!mobile && (
+        <Piece progress={progress} window={[0.67, 0.78]} from={[5.4, 0, 9.8]} to={[5.4, 0, 3.5]}>
+          {/* Poltrona girada para o centro da loja */}
+          <ContactShadow size={[1.3, 1.3]} />
+          <Armchair position={[0, 0.02, 0]} rotationY={-2.15} />
+          <SideTable position={[-0.85, 0.02, 0.45]} />
+        </Piece>
+      )}
+
+      {/* ===== Planta de piso entre a arara e a cristaleira ===== */}
+      {!mobile && (
+        <Piece progress={progress} window={[0.7, 0.8]} from={[6.1, 4.5, 0.6]} to={[6.1, 0, 0.6]}>
+          <group scale={0.9}>
+            <FloorPlant position={[0, 0, 0]} />
+          </group>
+        </Piece>
+      )}
+
       {/* ===== Banco estofado de espera — em frente ao lounge, longe do
             painel ripado (o painel ocupa x ≈ -3.3…-3.1 até z 1.2) ===== */}
       {!mobile && (
@@ -1652,6 +1766,8 @@ function AssemblyScene({ progress }: { progress: Progress }) {
           [0, 1.2],
           [-0.6, -2.4],
           [3.0, 1.7],
+          [6.0, -2.0],
+          [5.4, 3.5],
         ].map(([x, z], i) => (
           <group key={i} position={[x, 0, z]}>
             <mesh position={[0, -0.07, 0]}>

@@ -184,13 +184,14 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
           </mesh>
         </Layer>
 
-        {/* Parafusos que fixam a frente na estrutura — saem no eixo Z,
-            alinhados com seus furos (entre a estrutura e a frente) */}
+        {/* Parafusos que fixam a frente na estrutura — montados, ficam
+            cravados ATRAVÉS dos montantes (z 0.25, cabeça na face traseira);
+            na explosão saem no eixo Z rumo aos furos da frente */}
         <Layer progress={progress} dir={[0, 0, 0.9]}>
-          <Screw position={[-1.5, 0.3, 0.4]} />
-          <Screw position={[-1.5, -0.3, 0.4]} />
-          <Screw position={[1.5, 0.3, 0.4]} />
-          <Screw position={[1.5, -0.3, 0.4]} />
+          <Screw position={[-1.5, 0.3, 0.25]} />
+          <Screw position={[-1.5, -0.3, 0.25]} />
+          <Screw position={[1.5, 0.3, 0.25]} />
+          <Screw position={[1.5, -0.3, 0.25]} />
         </Layer>
 
         {/* Estrutura interna com travessas — recua para o fundo */}
@@ -223,8 +224,10 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
             <boxGeometry args={[3.16, 0.16, 0.04]} />
             <meshStandardMaterial map={T.nogueira} roughness={0.52} />
           </mesh>
-          <mesh position={[0, -0.015, -0.52]}>
-            <boxGeometry args={[3.16, 0.07, 0.04]} />
+          {/* Travessa superior: do topo dos vãos (-0.05) até encostar na
+              prateleira (0.0575) — fecha a fresta horizontal do fundo */}
+          <mesh position={[0, 0.005, -0.52]}>
+            <boxGeometry args={[3.16, 0.11, 0.04]} />
             <meshStandardMaterial map={T.nogueira} roughness={0.52} />
           </mesh>
           <mesh position={[0, -0.22, -0.52]}>
@@ -241,13 +244,15 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
 
         {/* Prateleira interna com divisórias — desce levemente para trás */}
         <Layer progress={progress} dir={[0, -0.6, -1.0]}>
-          <mesh position={[0, 0.08, -0.14]}>
-            <boxGeometry args={[3.16, 0.045, 0.62]} />
+          {/* Prateleira alcança o quadro do fundo (z -0.50) — sem fresta
+              aberta mostrando as corrediças por cima */}
+          <mesh position={[0, 0.08, -0.165]}>
+            <boxGeometry args={[3.16, 0.045, 0.67]} />
             <meshStandardMaterial map={T.freijo} roughness={0.5} />
           </mesh>
           {[-0.75, 0.75].map((x, i) => (
-            <mesh key={i} position={[x, 0.28, -0.14]}>
-              <boxGeometry args={[0.04, 0.36, 0.6]} />
+            <mesh key={i} position={[x, 0.28, -0.17]}>
+              <boxGeometry args={[0.04, 0.36, 0.66]} />
               <meshStandardMaterial map={T.nogueira} roughness={0.55} />
             </mesh>
           ))}
@@ -266,7 +271,8 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
         {/* Corrediças telescópicas fixas na estrutura — recuam um pouco,
             deixando as gavetas saírem delas */}
         <Layer progress={progress} dir={[0, 0, -1.0]}>
-          {[-0.795, -0.205, 0.205, 0.795].map((x, i) => (
+          {/* Encostadas nas laterais das gavetas (faces em ±0.76 / ±0.24) */}
+          {[-0.7725, -0.2275, 0.2275, 0.7725].map((x, i) => (
             <mesh key={i} position={[x, -0.16, -0.2]}>
               <boxGeometry args={[0.025, 0.05, 0.56]} />
               <meshStandardMaterial color="#8a8a8a" roughness={0.35} metalness={0.9} />
@@ -279,20 +285,21 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
         <Layer progress={progress} dir={[0, 0, -1.7]}>
           {[-0.5, 0.5].map((x, i) => (
             <group key={i} position={[x, -0.22, 0]}>
-              {/* Frente da gaveta */}
-              <mesh position={[0, 0, -0.565]}>
-                <boxGeometry args={[0.56, 0.3, 0.04]} />
+              {/* Frente embutida: nivelada com o plano do quadro
+                  (z -0.50…-0.54) e com fresta fina de 7.5mm ao redor */}
+              <mesh position={[0, 0, -0.52]}>
+                <boxGeometry args={[0.585, 0.325, 0.04]} />
                 <meshStandardMaterial map={T.nogueira} roughness={0.5} />
               </mesh>
-              {/* Fundo */}
-              <mesh position={[0, -0.14, -0.2275]}>
-                <boxGeometry args={[0.52, 0.025, 0.635]} />
+              {/* Fundo (caixa colada na face interna da frente, z -0.50) */}
+              <mesh position={[0, -0.14, -0.205]}>
+                <boxGeometry args={[0.52, 0.025, 0.59]} />
                 <meshStandardMaterial map={T.freijo} roughness={0.55} />
               </mesh>
               {/* Laterais */}
               {[-0.2475, 0.2475].map((sx, j) => (
-                <mesh key={j} position={[sx, -0.02, -0.2275]}>
-                  <boxGeometry args={[0.025, 0.26, 0.635]} />
+                <mesh key={j} position={[sx, -0.02, -0.205]}>
+                  <boxGeometry args={[0.025, 0.26, 0.59]} />
                   <meshStandardMaterial map={T.freijo} roughness={0.55} />
                 </mesh>
               ))}
@@ -310,12 +317,12 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
         <Layer progress={progress} dir={[0, 0, -2.4]}>
           {[-0.5, 0.5].map((x, i) => (
             <group key={i} position={[x, -0.2, 0]}>
-              <mesh position={[0, 0, -0.63]}>
+              <mesh position={[0, 0, -0.585]}>
                 <boxGeometry args={[0.34, 0.035, 0.035]} />
                 <meshStandardMaterial color="#d8b070" roughness={0.25} metalness={0.85} />
               </mesh>
               {[-0.12, 0.12].map((px, j) => (
-                <mesh key={j} position={[px, 0, -0.603]}>
+                <mesh key={j} position={[px, 0, -0.558]}>
                   <boxGeometry args={[0.018, 0.018, 0.05]} />
                   <meshStandardMaterial color="#b8945a" roughness={0.3} metalness={0.85} />
                 </mesh>

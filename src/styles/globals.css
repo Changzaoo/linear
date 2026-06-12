@@ -1,0 +1,79 @@
+/* Estilos base do Lenis (scroll suavizado) */
+@import "lenis/dist/lenis.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fallback para quando o Lenis está desativado (reduced motion).
+   Com o Lenis ativo, a classe .lenis-smooth zera este comportamento —
+   os dois juntos causariam suavização dupla. */
+html:not(.lenis) {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-background text-text font-sans antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: #d8b978;
+  color: #080706;
+}
+
+/* Scrollbar discreta */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #080706;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a241e;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9c7248;
+}
+
+@layer components {
+  .container-site {
+    @apply mx-auto w-full max-w-7xl px-6 md:px-10;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-widest2 text-champagne;
+  }
+
+  .heading-xl {
+    @apply font-display text-4xl leading-tight md:text-6xl;
+  }
+
+  .heading-lg {
+    @apply font-display text-3xl leading-tight md:text-5xl;
+  }
+
+  .divider-gradient {
+    @apply h-px w-full bg-gradient-to-r from-transparent via-champagne/40 to-transparent;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-champagne px-7 py-4 text-sm font-bold uppercase tracking-wider text-background transition-all duration-300 hover:shadow-glow hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-champagne focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-champagne/40 px-7 py-4 text-sm font-bold uppercase tracking-wider text-champagne transition-all duration-300 hover:border-champagne hover:bg-champagne/5 focus:outline-none focus:ring-2 focus:ring-champagne focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  .card-premium {
+    @apply rounded-lg border border-white/5 bg-surface p-7 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-champagne/25 hover:shadow-glow;
+  }
+}
+
+/* Respeita usuários com sensibilidade a movimento */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

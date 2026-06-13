@@ -1,6 +1,7 @@
 /* Presença de participantes remotos (cursor no piso, nome, papel).
    Atualizada pelo CollabBridge; lida pela cena e pela barra de presença. */
 import { createStore, useStore } from "../../lib/tinyStore";
+import { useMemo } from "react";
 import { getActiveSession, myPeerId, type Presence } from "./collaboration";
 import { orc3dStore } from "./useOrcamento3DStore";
 
@@ -39,7 +40,8 @@ export function prunePeers() {
 }
 
 export function usePeers(): Presence[] {
-  return useStore(presenceStore, (s) => Object.values(s.peers));
+  const peersMap = useStore(presenceStore, (s) => s.peers);
+  return useMemo(() => Object.values(peersMap), [peersMap]);
 }
 
 /* Publica o cursor (posição no piso) com throttle ~20fps. */

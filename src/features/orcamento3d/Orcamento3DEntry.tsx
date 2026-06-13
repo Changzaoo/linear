@@ -47,25 +47,15 @@ export default function Orcamento3DEntry({ progress }: Props) {
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           className="pointer-events-none absolute inset-x-0 bottom-[14vh] z-20 flex justify-center px-6"
         >
-          <div className="pointer-events-auto relative max-w-xl overflow-hidden rounded-2xl border border-champagne/25 bg-[rgba(10,9,8,0.62)] px-8 py-7 text-center shadow-glow backdrop-blur-md">
-            {/* brilho superior sutil */}
-            <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-champagne/70 to-transparent" />
-
-            <p className="mb-1 text-[11px] uppercase tracking-widest2 text-champagne/80">
-              Estúdio 3D de Orçamento
-            </p>
-            <h2 className="font-display text-2xl italic leading-snug text-text md:text-[2rem]">
-              Grandes projetos começam com uma visão clara.
-            </h2>
-
+          <div className="pointer-events-auto px-2 py-1 text-center">
             {mobile ? (
-              <button
-                type="button"
-                onClick={openStudio}
-                className="mt-6 w-full rounded-xl border border-champagne/40 bg-champagne/15 px-6 py-4 text-base font-medium tracking-wide text-text transition active:scale-[0.98]"
-              >
-                Iniciar Orçamento 3D
-              </button>
+              <motion.p className="mt-2 text-sm text-muted">
+                Pressione{" "}
+                <kbd className="mx-1 rounded-md border border-champagne/40 bg-surface px-2.5 py-1 font-sans text-xs font-semibold tracking-wide text-champagne">
+                  ENTER
+                </kbd>{" "}
+                para iniciar seu orçamento 3D
+              </motion.p>
             ) : (
               <motion.p
                 animate={{ opacity: [0.55, 1, 0.55] }}

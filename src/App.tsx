@@ -33,7 +33,7 @@ function useHash() {
 function StudioLoading() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c0a08]">
-      <p className="animate-pulse font-display text-lg italic text-champagne">Preparando seu estúdio 3D…</p>
+      <p className="animate-pulse font-display text-lg italic text-champagne">Pressione ENTER para iniciar seu orçamento 3D</p>
     </div>
   );
 }

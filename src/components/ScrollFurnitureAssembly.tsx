@@ -1,4 +1,13 @@
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  MutableRefObject,
+  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, Line } from "@react-three/drei";
 import { MotionValue } from "framer-motion";
@@ -53,9 +62,95 @@ interface PieceProps {
   onUpdate?: (t: number) => void;
 }
 
+/* ---------- Montagem peça a peça ----------
+   `PieceT` carrega o progresso LOCAL de cada móvel (0→1 dentro da sua
+   janela de scroll). Os componentes internos usam esse valor através do
+   <Part> para deslizar, descer ou seguir no eixo de encaixe e travar um
+   a um — assim não é o móvel inteiro que aparece de bloco, e sim cada
+   coisinha sendo atribuída (carcaça → prateleiras → ferragens → decoração). */
+const PieceT = createContext<MutableRefObject<number> | null>(null);
+
+interface PartProps {
+  /** Posição final (local) da peça, já montada. */
+  position?: readonly [number, number, number];
+  rotation?: readonly [number, number, number];
+  /** Deslocamento de montagem que colapsa a zero (eixo de encaixe). */
+  offset?: readonly [number, number, number];
+  /** Rotação extra que se desfaz ao assentar (ex.: parafuso rosqueando). */
+  spin?: number;
+  /** Sub-janela dentro do progresso do móvel: escalona a ordem de montagem. */
+  win?: [number, number];
+  children: ReactNode;
+}
+
+/** Sub-grupo que se monta dentro de um <Piece>, seguindo o eixo de encaixe. */
+function Part({
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  offset = [0, 0, 0],
+  spin = 0,
+  win = [0, 1],
+  children,
+}: PartProps) {
+  const tRef = useContext(PieceT);
+  const ref = useRef<THREE.Group>(null);
+
+  useFrame(() => {
+    const g = ref.current;
+    if (!g) return;
+    const t = tRef ? tRef.current : 1;
+    const s = windowProgress(t, win[0], win[1]); // 0→1 com easeOut
+    const k = 1 - s; // quanto ainda falta encaixar
+    g.position.set(
+      position[0] + offset[0] * k,
+      position[1] + offset[1] * k,
+      position[2] + offset[2] * k
+    );
+    g.rotation.set(rotation[0], rotation[1] + spin * k, rotation[2]);
+    // Cada peça só ganha matéria a partir da sua deixa — assim ela
+    // aparece encaixando, em vez de pairar pronta antes da hora. O <Piece>
+    // pula as subárvores marcadas (assembled), então quem manda na opacidade
+    // aqui dentro é este <Part>, sem depender da ordem dos useFrame.
+    g.visible = s > 0.001;
+    g.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.material) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const base = (obj.userData.baseOpacity as number | undefined) ?? 1;
+      mats.forEach((m) => {
+        (m as THREE.Material).opacity = s * base;
+      });
+    });
+  });
+
+  return (
+    <group ref={ref} userData={{ assembled: true }}>
+      {children}
+    </group>
+  );
+}
+
+/** Aplica a opacidade do <Piece> aos filhos diretos, mas NÃO desce em
+    subárvores de <Part> (essas controlam o próprio fade por sub-janela). */
+function fadeOwnChildren(obj: THREE.Object3D, t: number) {
+  for (const child of obj.children) {
+    if (child.userData.assembled) continue; // um <Part> cuida de si mesmo
+    const mesh = child as THREE.Mesh;
+    if (mesh.material) {
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const base = (child.userData.baseOpacity as number | undefined) ?? 1;
+      mats.forEach((m) => {
+        (m as THREE.Material).opacity = t * base;
+      });
+    }
+    fadeOwnChildren(child, t);
+  }
+}
+
 /** Grupo animado: entra de fora da cena, encaixa e ganha opacidade. */
 function Piece({ progress, window: win, from, to, rotFrom = 0, children, onUpdate }: PieceProps) {
   const ref = useRef<THREE.Group>(null);
+  const tRef = useRef(0);
   const fromV = useMemo(() => new THREE.Vector3(...from), [from]);
   const toV = useMemo(() => new THREE.Vector3(...to), [to]);
 
@@ -63,22 +158,19 @@ function Piece({ progress, window: win, from, to, rotFrom = 0, children, onUpdat
     const g = ref.current;
     if (!g) return;
     const t = windowProgress(progress.get(), win[0], win[1]);
+    tRef.current = t;
     g.position.lerpVectors(fromV, toV, t);
     g.rotation.y = rotFrom * (1 - t);
     g.visible = t > 0.001;
-    g.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      if (!mesh.material) return;
-      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      const base = (obj.userData.baseOpacity as number | undefined) ?? 1;
-      mats.forEach((m) => {
-        (m as THREE.Material).opacity = t * base;
-      });
-    });
+    fadeOwnChildren(g, t);
     onUpdate?.(t);
   });
 
-  return <group ref={ref}>{children}</group>;
+  return (
+    <PieceT.Provider value={tRef}>
+      <group ref={ref}>{children}</group>
+    </PieceT.Provider>
+  );
 }
 
 /* ---------- Sombra de contato: aterra o móvel no piso ---------- */
@@ -727,42 +819,54 @@ function Gondola({
   return (
     <group>
       <ContactShadow size={[2.4, 1.4]} />
-      {/* Base recuada */}
-      <mesh position={[0, 0.06, 0]}>
-        <boxGeometry args={[1.7, 0.12, 0.7]} />
-        <meshStandardMaterial {...FIN.black} transparent />
-      </mesh>
-      {/* Espinha central e laterais */}
-      <mesh position={[0, 0.72, 0]}>
-        <boxGeometry args={[1.8, 1.2, 0.18]} />
-        <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
-      </mesh>
-      {[-0.88, 0.88].map((x, i) => (
-        <mesh key={i} position={[x, 0.72, 0]}>
-          <boxGeometry args={[0.06, 1.2, 0.8]} />
+      {/* Base recuada pousa primeiro */}
+      <Part position={[0, 0.06, 0]} offset={[0, -0.6, 0]} win={[0, 0.14]}>
+        <mesh>
+          <boxGeometry args={[1.7, 0.12, 0.7]} />
+          <meshStandardMaterial {...FIN.black} transparent />
+        </mesh>
+      </Part>
+      {/* Espinha central sobe */}
+      <Part position={[0, 0.72, 0]} offset={[0, -1.0, 0]} win={[0.12, 0.3]}>
+        <mesh>
+          <boxGeometry args={[1.8, 1.2, 0.18]} />
           <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
         </mesh>
+      </Part>
+      {/* Laterais entram pelos flancos */}
+      {[-0.88, 0.88].map((x, i) => (
+        <Part key={i} position={[x, 0.72, 0]} offset={[x > 0 ? 0.7 : -0.7, 0, 0]} win={[0.26, 0.44]}>
+          <mesh>
+            <boxGeometry args={[0.06, 1.2, 0.8]} />
+            <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
+          </mesh>
+        </Part>
       ))}
-      {/* Tampo em pedra */}
-      <mesh position={[0, 1.345, 0]}>
-        <boxGeometry args={[1.88, 0.05, 0.88]} />
-        <meshStandardMaterial map={stone} roughness={0.3} transparent />
-      </mesh>
-      {/* Prateleiras nos dois lados, com fita de LED na borda */}
-      {[0.52, 0.96].map((y) =>
-        [-0.24, 0.24].map((z) => (
-          <group key={`${y}-${z}`}>
-            <mesh position={[0, y, z]}>
-              <boxGeometry args={[1.7, 0.04, 0.3]} />
-              <meshStandardMaterial map={freijo} roughness={0.5} transparent />
-            </mesh>
-            <mesh position={[0, y - 0.026, z + (z > 0 ? 0.14 : -0.14)]}>
-              <boxGeometry args={[1.6, 0.012, 0.02]} />
-              <meshStandardMaterial {...FIN.led} transparent />
-            </mesh>
-          </group>
-        ))
+      {/* Prateleiras dos dois lados descem nível a nível, com fita de LED */}
+      {[0.52, 0.96].map((y, yi) =>
+        [-0.24, 0.24].map((z, zi) => {
+          const start = 0.42 + (yi * 2 + zi) * 0.08;
+          return (
+            <Part key={`${y}-${z}`} position={[0, y, z]} offset={[0, 0.7, 0]} win={[start, start + 0.16]}>
+              <mesh>
+                <boxGeometry args={[1.7, 0.04, 0.3]} />
+                <meshStandardMaterial map={freijo} roughness={0.5} transparent />
+              </mesh>
+              <mesh position={[0, -0.026, z > 0 ? 0.14 : -0.14]}>
+                <boxGeometry args={[1.6, 0.012, 0.02]} />
+                <meshStandardMaterial {...FIN.led} transparent />
+              </mesh>
+            </Part>
+          );
+        })
       )}
+      {/* Tampo em pedra fecha por cima */}
+      <Part position={[0, 1.345, 0]} offset={[0, 0.7, 0]} win={[0.8, 0.94]}>
+        <mesh>
+          <boxGeometry args={[1.88, 0.05, 0.88]} />
+          <meshStandardMaterial map={stone} roughness={0.3} transparent />
+        </mesh>
+      </Part>
       {/* Produtos sobre o tampo (superfície em y = 1.37) */}
       <Vase position={[-0.6, 1.37, 0.1]} height={0.24} radius={0.055} color="#d9cfbc" />
       <BookStack position={[0.05, 1.37, -0.08]} />
@@ -800,34 +904,45 @@ function GlassVitrine({ nogueira, stone }: { nogueira: THREE.Texture; stone: THR
         <boxGeometry args={[1.36, 0.05, 0.66]} />
         <meshStandardMaterial map={stone} roughness={0.3} transparent />
       </mesh>
-      {/* Redoma de vidro com montantes de latão */}
+      {/* Redoma de vidro com montantes de latão — montantes sobem primeiro */}
       {[
         [-0.64, -0.305],
         [-0.64, 0.305],
         [0.64, -0.305],
         [0.64, 0.305],
       ].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.83, z]}>
-          <boxGeometry args={[0.03, 0.44, 0.03]} />
-          <meshStandardMaterial {...FIN.brass} transparent />
-        </mesh>
+        <Part key={i} position={[x, 0.83, z]} offset={[0, -0.44, 0]} win={[0.46 + i * 0.05, 0.62 + i * 0.05]}>
+          <mesh>
+            <boxGeometry args={[0.03, 0.44, 0.03]} />
+            <meshStandardMaterial {...FIN.brass} transparent />
+          </mesh>
+        </Part>
       ))}
+      {/* Vidros frontal/traseiro fecham em z */}
       {[-0.305, 0.305].map((z, i) => (
-        <mesh key={i} position={[0, 0.83, z]} userData={{ baseOpacity: 0.14 }}>
-          <boxGeometry args={[1.28, 0.44, 0.015]} />
-          <meshStandardMaterial {...FIN.glass} transparent />
-        </mesh>
+        <Part key={i} position={[0, 0.83, z]} offset={[0, 0, z > 0 ? 0.5 : -0.5]} win={[0.66 + i * 0.05, 0.82 + i * 0.05]}>
+          <mesh userData={{ baseOpacity: 0.14 }}>
+            <boxGeometry args={[1.28, 0.44, 0.015]} />
+            <meshStandardMaterial {...FIN.glass} transparent />
+          </mesh>
+        </Part>
       ))}
+      {/* Vidros laterais fecham em x */}
       {[-0.64, 0.64].map((x, i) => (
-        <mesh key={i} position={[x, 0.83, 0]} userData={{ baseOpacity: 0.14 }}>
-          <boxGeometry args={[0.015, 0.44, 0.6]} />
+        <Part key={i} position={[x, 0.83, 0]} offset={[x > 0 ? 0.5 : -0.5, 0, 0]} win={[0.72 + i * 0.05, 0.88 + i * 0.05]}>
+          <mesh userData={{ baseOpacity: 0.14 }}>
+            <boxGeometry args={[0.015, 0.44, 0.6]} />
+            <meshStandardMaterial {...FIN.glass} transparent />
+          </mesh>
+        </Part>
+      ))}
+      {/* Tampa de vidro desce e fecha a redoma */}
+      <Part position={[0, 1.055, 0]} offset={[0, 0.5, 0]} win={[0.86, 1]}>
+        <mesh userData={{ baseOpacity: 0.2 }}>
+          <boxGeometry args={[1.31, 0.015, 0.64]} />
           <meshStandardMaterial {...FIN.glass} transparent />
         </mesh>
-      ))}
-      <mesh position={[0, 1.055, 0]} userData={{ baseOpacity: 0.2 }}>
-        <boxGeometry args={[1.31, 0.015, 0.64]} />
-        <meshStandardMaterial {...FIN.glass} transparent />
-      </mesh>
+      </Part>
       {/* Rebordo superior em latão */}
       {[-0.31, 0.31].map((z, i) => (
         <mesh key={`t-${i}`} position={[0, 1.07, z]}>
@@ -928,17 +1043,21 @@ function TallCabinet({ nogueira, freijo }: { nogueira: THREE.Texture; freijo: TH
         <boxGeometry args={[1.42, 0.12, 0.5]} />
         <meshStandardMaterial {...FIN.black} transparent />
       </mesh>
-      {/* Laterais, fundo, teto e piso do móvel */}
+      {/* Laterais entram pelos flancos, fundo encosta por trás */}
       {[-0.72, 0.72].map((x, i) => (
-        <mesh key={i} position={[x, 1.31, 0]}>
-          <boxGeometry args={[0.06, 2.38, 0.55]} />
+        <Part key={i} position={[x, 1.31, 0]} offset={[x > 0 ? 0.7 : -0.7, 0, 0]} win={[0, 0.18]}>
+          <mesh>
+            <boxGeometry args={[0.06, 2.38, 0.55]} />
+            <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
+          </mesh>
+        </Part>
+      ))}
+      <Part position={[0, 1.31, -0.255]} offset={[0, 0, -0.6]} win={[0.16, 0.32]}>
+        <mesh>
+          <boxGeometry args={[1.38, 2.38, 0.04]} />
           <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
         </mesh>
-      ))}
-      <mesh position={[0, 1.31, -0.255]}>
-        <boxGeometry args={[1.38, 2.38, 0.04]} />
-        <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
-      </mesh>
+      </Part>
       <mesh position={[0, 0.15, 0]}>
         <boxGeometry args={[1.38, 0.06, 0.55]} />
         <meshStandardMaterial map={nogueira} roughness={0.55} transparent />
@@ -952,22 +1071,25 @@ function TallCabinet({ nogueira, freijo }: { nogueira: THREE.Texture; freijo: TH
         <boxGeometry args={[1.54, 0.03, 0.6]} />
         <meshStandardMaterial {...FIN.brass} transparent />
       </mesh>
-      {/* Prateleiras internas com LED */}
-      {[0.7, 1.3, 1.9].map((y, i) => (
-        <group key={i}>
-          <mesh position={[0, y, 0]}>
-            <boxGeometry args={[1.38, 0.04, 0.48]} />
-            <meshStandardMaterial map={freijo} roughness={0.5} transparent />
-          </mesh>
-          <mesh position={[0, y - 0.026, 0.2]}>
-            <boxGeometry args={[1.3, 0.012, 0.02]} />
-            <meshStandardMaterial {...FIN.led} transparent />
-          </mesh>
-        </group>
-      ))}
-      {/* Portas de vidro emolduradas em latão (face z 0.275) */}
+      {/* Prateleiras internas descem uma a uma, cada uma com seu LED */}
+      {[0.7, 1.3, 1.9].map((y, i) => {
+        const start = 0.34 + i * 0.14;
+        return (
+          <Part key={i} position={[0, y, 0]} offset={[0, 1.0, 0]} win={[start, start + 0.16]}>
+            <mesh>
+              <boxGeometry args={[1.38, 0.04, 0.48]} />
+              <meshStandardMaterial map={freijo} roughness={0.5} transparent />
+            </mesh>
+            <mesh position={[0, -0.026, 0.2]}>
+              <boxGeometry args={[1.3, 0.012, 0.02]} />
+              <meshStandardMaterial {...FIN.led} transparent />
+            </mesh>
+          </Part>
+        );
+      })}
+      {/* Portas de vidro emolduradas em latão (face z 0.275) — montadas por último */}
       {[-0.355, 0.355].map((x, i) => (
-        <group key={i} position={[x, 1.31, 0.275]}>
+        <Part key={i} position={[x, 1.31, 0.275]} offset={[0, 0, 0.55]} win={[0.78 + i * 0.08, 0.94 + i * 0.08]}>
           <mesh userData={{ baseOpacity: 0.16 }}>
             <boxGeometry args={[0.66, 2.26, 0.015]} />
             <meshStandardMaterial {...FIN.glass} transparent />
@@ -990,7 +1112,7 @@ function TallCabinet({ nogueira, freijo }: { nogueira: THREE.Texture; freijo: TH
             <boxGeometry args={[0.018, 0.32, 0.018]} />
             <meshStandardMaterial {...FIN.brass} transparent />
           </mesh>
-        </group>
+        </Part>
       ))}
       {/* Peças expostas (superfícies das prateleiras / piso do móvel) */}
       <Vase position={[-0.35, 0.18, 0.05]} height={0.3} radius={0.07} color="#d9cfbc" />
@@ -1309,10 +1431,13 @@ function AssemblyScene({ progress }: { progress: Progress }) {
         to={[-3.2, 0, -1]}
         rotFrom={-0.6}
       >
-        <mesh position={[-0.12, 1.65, 0]}>
-          <boxGeometry args={[0.06, 3.3, 4.4]} />
-          <meshStandardMaterial color="#120d09" roughness={0.9} transparent />
-        </mesh>
+        {/* Caixa de fundo: primeira a assentar (vem de trás) */}
+        <Part position={[-0.12, 1.65, 0]} offset={[-0.5, 0, 0]} win={[0, 0.18]}>
+          <mesh>
+            <boxGeometry args={[0.06, 3.3, 4.4]} />
+            <meshStandardMaterial color="#120d09" roughness={0.9} transparent />
+          </mesh>
+        </Part>
         <mesh position={[-0.08, 1.65, 0]} rotation={[0, Math.PI / 2, 0]} userData={{ baseOpacity: 0.55 }}>
           <planeGeometry args={[4.3, 3.2]} />
           <meshStandardMaterial
@@ -1322,20 +1447,36 @@ function AssemblyScene({ progress }: { progress: Progress }) {
             transparent
           />
         </mesh>
-        {Array.from({ length: slatCount }).map((_, i) => (
-          <mesh key={i} position={[0, 1.65, -2.05 + i * (4.1 / (slatCount - 1))]}>
-            <boxGeometry args={[0.14, 3.25, 0.11]} />
-            <meshStandardMaterial map={T.freijoSlat} roughness={0.5} transparent />
+        {/* Ripas instaladas uma a uma, da esquerda para a direita */}
+        {Array.from({ length: slatCount }).map((_, i) => {
+          const start = 0.14 + (i / slatCount) * 0.62;
+          return (
+            <Part
+              key={i}
+              position={[0, 1.65, -2.05 + i * (4.1 / (slatCount - 1))]}
+              offset={[0.95, 0, 0]}
+              win={[start, Math.min(1, start + 0.2)]}
+            >
+              <mesh>
+                <boxGeometry args={[0.14, 3.25, 0.11]} />
+                <meshStandardMaterial map={T.freijoSlat} roughness={0.5} transparent />
+              </mesh>
+            </Part>
+          );
+        })}
+        {/* Arremates de latão: descem/sobem por último, fechando o conjunto */}
+        <Part position={[0.02, 3.3, 0]} offset={[0, 0.6, 0]} win={[0.82, 1]}>
+          <mesh>
+            <boxGeometry args={[0.18, 0.035, 4.35]} />
+            <meshStandardMaterial {...FIN.brass} transparent />
           </mesh>
-        ))}
-        <mesh position={[0.02, 3.3, 0]}>
-          <boxGeometry args={[0.18, 0.035, 4.35]} />
-          <meshStandardMaterial {...FIN.brass} transparent />
-        </mesh>
-        <mesh position={[0.02, 0.05, 0]}>
-          <boxGeometry args={[0.18, 0.06, 4.35]} />
-          <meshStandardMaterial {...FIN.brassDark} transparent />
-        </mesh>
+        </Part>
+        <Part position={[0.02, 0.05, 0]} offset={[0, -0.6, 0]} win={[0.82, 1]}>
+          <mesh>
+            <boxGeometry args={[0.18, 0.06, 4.35]} />
+            <meshStandardMaterial {...FIN.brassDark} transparent />
+          </mesh>
+        </Part>
       </Piece>
 
       {/* ===== Balcão central: pedra em cascata + frente frisada (50%) ===== */}
@@ -1347,52 +1488,88 @@ function AssemblyScene({ progress }: { progress: Progress }) {
         rotFrom={0.35}
       >
         <ContactShadow size={[5.2, 2.4]} />
-        <mesh position={[0, 0.56, 0]}>
-          <boxGeometry args={[3.6, 0.92, 1.0]} />
-          <meshStandardMaterial map={T.nogueira} roughness={0.52} transparent />
-        </mesh>
-        {Array.from({ length: fluteCount }).map((_, i) => (
-          <mesh key={i} position={[-1.62 + i * (3.24 / (fluteCount - 1)), 0.56, 0.53]}>
-            <boxGeometry args={[0.13, 0.88, 0.055]} />
-            <meshStandardMaterial map={T.freijoSlat} roughness={0.5} transparent />
+        {/* Rodapé de latão assenta primeiro */}
+        <Part position={[0, 0.06, 0]} offset={[0, -0.7, 0]} win={[0, 0.16]}>
+          <mesh>
+            <boxGeometry args={[3.3, 0.12, 0.82]} />
+            <meshStandardMaterial {...FIN.brassDark} transparent />
           </mesh>
-        ))}
-        <mesh position={[0, 1.06, 0]}>
-          <boxGeometry args={[3.9, 0.08, 1.3]} />
-          <meshStandardMaterial map={T.stone} roughness={0.3} metalness={0.05} transparent />
-        </mesh>
-        <mesh position={[-1.91, 0.55, 0]}>
-          <boxGeometry args={[0.08, 1.1, 1.3]} />
-          <meshStandardMaterial map={T.stone} roughness={0.3} transparent />
-        </mesh>
-        <mesh position={[1.91, 0.55, 0]}>
-          <boxGeometry args={[0.08, 1.1, 1.3]} />
-          <meshStandardMaterial map={T.stone} roughness={0.3} transparent />
-        </mesh>
-        <mesh position={[0, 0.06, 0]}>
-          <boxGeometry args={[3.3, 0.12, 0.82]} />
-          <meshStandardMaterial {...FIN.brassDark} transparent />
-        </mesh>
-        <mesh position={[0, 0.99, 0.56]}>
-          <boxGeometry args={[3.5, 0.025, 0.03]} />
-          <meshStandardMaterial {...FIN.led} transparent />
-        </mesh>
-        {/* Decoração sobre o tampo (tampo termina em y=1.10) */}
-        <Vase position={[1.25, 1.1, 0.1]} height={0.3} radius={0.07} color="#d9cfbc" />
-        <BookStack position={[-1.15, 1.1, 0.05]} />
-        {/* Esfera de latão apoiada SOBRE a pilha de livros */}
-        <mesh position={[-1.13, 1.225, 0.05]}>
-          <sphereGeometry args={[0.045, 14, 10]} />
-          <meshStandardMaterial {...FIN.brass} transparent />
-        </mesh>
+        </Part>
+        {/* Corpo do balcão sobe e trava sobre o rodapé */}
+        <Part position={[0, 0.56, 0]} offset={[0, -0.9, 0]} win={[0.12, 0.34]}>
+          <mesh>
+            <boxGeometry args={[3.6, 0.92, 1.0]} />
+            <meshStandardMaterial map={T.nogueira} roughness={0.52} transparent />
+          </mesh>
+        </Part>
+        {/* Friso a friso na frente do balcão */}
+        {Array.from({ length: fluteCount }).map((_, i) => {
+          const start = 0.28 + (i / fluteCount) * 0.42;
+          return (
+            <Part
+              key={i}
+              position={[-1.62 + i * (3.24 / (fluteCount - 1)), 0.56, 0.53]}
+              offset={[0, 0, 0.55]}
+              win={[start, Math.min(1, start + 0.18)]}
+            >
+              <mesh>
+                <boxGeometry args={[0.13, 0.88, 0.055]} />
+                <meshStandardMaterial map={T.freijoSlat} roughness={0.5} transparent />
+              </mesh>
+            </Part>
+          );
+        })}
+        {/* Laterais de pedra deslizam pelos flancos */}
+        <Part position={[-1.91, 0.55, 0]} offset={[-0.8, 0, 0]} win={[0.5, 0.68]}>
+          <mesh>
+            <boxGeometry args={[0.08, 1.1, 1.3]} />
+            <meshStandardMaterial map={T.stone} roughness={0.3} transparent />
+          </mesh>
+        </Part>
+        <Part position={[1.91, 0.55, 0]} offset={[0.8, 0, 0]} win={[0.5, 0.68]}>
+          <mesh>
+            <boxGeometry args={[0.08, 1.1, 1.3]} />
+            <meshStandardMaterial map={T.stone} roughness={0.3} transparent />
+          </mesh>
+        </Part>
+        {/* Tampo de pedra em cascata desce e fecha o conjunto */}
+        <Part position={[0, 1.06, 0]} offset={[0, 1.1, 0]} win={[0.66, 0.84]}>
+          <mesh>
+            <boxGeometry args={[3.9, 0.08, 1.3]} />
+            <meshStandardMaterial map={T.stone} roughness={0.3} metalness={0.05} transparent />
+          </mesh>
+        </Part>
+        {/* Fita de LED sob a aba acende por último */}
+        <Part position={[0, 0.99, 0.56]} offset={[0, 0, 0.25]} win={[0.84, 0.96]}>
+          <mesh>
+            <boxGeometry args={[3.5, 0.025, 0.03]} />
+            <meshStandardMaterial {...FIN.led} transparent />
+          </mesh>
+        </Part>
+        {/* Decoração pousa sobre o tampo no fim (tampo termina em y=1.10) */}
+        <Part position={[1.25, 1.1, 0.1]} offset={[0, 0.5, 0]} win={[0.86, 1]}>
+          <Vase position={[0, 0, 0]} height={0.3} radius={0.07} color="#d9cfbc" />
+        </Part>
+        <Part position={[-1.15, 1.1, 0.05]} offset={[0, 0.5, 0]} win={[0.88, 1]}>
+          <BookStack position={[0, 0, 0]} />
+          {/* Esfera de latão apoiada SOBRE a pilha de livros */}
+          <mesh position={[0.02, 0.125, 0]}>
+            <sphereGeometry args={[0.045, 14, 10]} />
+            <meshStandardMaterial {...FIN.brass} transparent />
+          </mesh>
+        </Part>
         {/* Bandeja de latão com perfumes (tampo 1.10 → bandeja 1.108 → frascos 1.116) */}
-        <mesh position={[0.5, 1.108, 0.05]}>
-          <cylinderGeometry args={[0.17, 0.17, 0.015, 20]} />
-          <meshStandardMaterial {...FIN.brass} transparent />
-        </mesh>
-        <PerfumeBottle position={[0.42, 1.116, 0.0]} />
-        <PerfumeBottle position={[0.56, 1.116, 0.1]} color="#8a6a42" />
-        <SmallPlant position={[-0.55, 1.1, -0.25]} />
+        <Part position={[0.5, 1.108, 0.05]} offset={[0, 0.5, 0]} win={[0.9, 1]}>
+          <mesh>
+            <cylinderGeometry args={[0.17, 0.17, 0.015, 20]} />
+            <meshStandardMaterial {...FIN.brass} transparent />
+          </mesh>
+          <PerfumeBottle position={[-0.08, 0.008, -0.05]} />
+          <PerfumeBottle position={[0.06, 0.008, 0.05]} color="#8a6a42" />
+        </Part>
+        <Part position={[-0.55, 1.1, -0.25]} offset={[0, 0.5, 0]} win={[0.9, 1]}>
+          <SmallPlant position={[0, 0, 0]} />
+        </Part>
       </Piece>
 
       {/* ===== Banquetas em frente ao balcão ===== */}
@@ -1411,30 +1588,42 @@ function AssemblyScene({ progress }: { progress: Progress }) {
         rotFrom={0.5}
       >
         <ContactShadow size={[3.4, 1.4]} />
-        <mesh position={[0, 1.2, -0.26]}>
-          <boxGeometry args={[2.6, 2.3, 0.06]} />
-          <meshStandardMaterial map={T.nogueira} roughness={0.55} transparent />
-        </mesh>
-        <mesh position={[-1.27, 1.2, 0]}>
-          <boxGeometry args={[0.07, 2.3, 0.56]} />
-          <meshStandardMaterial map={T.nogueira} roughness={0.55} transparent />
-        </mesh>
-        <mesh position={[1.27, 1.2, 0]}>
-          <boxGeometry args={[0.07, 2.3, 0.56]} />
-          <meshStandardMaterial map={T.nogueira} roughness={0.55} transparent />
-        </mesh>
-        {[0.65, 1.25, 1.85].map((y, i) => (
-          <group key={i}>
-            <mesh position={[0, y, 0]}>
-              <boxGeometry args={[2.48, 0.055, 0.52]} />
-              <meshStandardMaterial map={T.freijo} roughness={0.5} transparent />
-            </mesh>
-            <mesh position={[0, y - 0.035, 0.16]}>
-              <boxGeometry args={[2.3, 0.012, 0.02]} />
-              <meshStandardMaterial {...FIN.led} transparent />
-            </mesh>
-          </group>
-        ))}
+        {/* Laterais entram pelos flancos */}
+        <Part position={[-1.27, 1.2, 0]} offset={[-0.7, 0, 0]} win={[0, 0.2]}>
+          <mesh>
+            <boxGeometry args={[0.07, 2.3, 0.56]} />
+            <meshStandardMaterial map={T.nogueira} roughness={0.55} transparent />
+          </mesh>
+        </Part>
+        <Part position={[1.27, 1.2, 0]} offset={[0.7, 0, 0]} win={[0, 0.2]}>
+          <mesh>
+            <boxGeometry args={[0.07, 2.3, 0.56]} />
+            <meshStandardMaterial map={T.nogueira} roughness={0.55} transparent />
+          </mesh>
+        </Part>
+        {/* Fundo encosta por trás, travando as laterais */}
+        <Part position={[0, 1.2, -0.26]} offset={[0, 0, -0.6]} win={[0.18, 0.36]}>
+          <mesh>
+            <boxGeometry args={[2.6, 2.3, 0.06]} />
+            <meshStandardMaterial map={T.nogueira} roughness={0.55} transparent />
+          </mesh>
+        </Part>
+        {/* Prateleiras descem e travam, de baixo para cima, cada uma com seu LED */}
+        {[0.65, 1.25, 1.85].map((y, i) => {
+          const start = 0.36 + i * 0.16;
+          return (
+            <Part key={i} position={[0, y, 0]} offset={[0, 1.2, 0]} win={[start, start + 0.18]}>
+              <mesh>
+                <boxGeometry args={[2.48, 0.055, 0.52]} />
+                <meshStandardMaterial map={T.freijo} roughness={0.5} transparent />
+              </mesh>
+              <mesh position={[0, -0.035, 0.16]}>
+                <boxGeometry args={[2.3, 0.012, 0.02]} />
+                <meshStandardMaterial {...FIN.led} transparent />
+              </mesh>
+            </Part>
+          );
+        })}
         {/* Decoração — alturas calculadas para apoiar no topo de cada
             prateleira (y + 0.0275) sem invadir a prateleira de cima */}
         <Vase position={[-0.8, 0.68, 0.05]} height={0.28} />
@@ -1481,59 +1670,76 @@ function AssemblyScene({ progress }: { progress: Progress }) {
       {/* ===== Torre expositora em vidro e latão ===== */}
       <Piece progress={progress} window={[0.6, 0.72]} from={[1.7, 5, -2.7]} to={[1.7, 0, -2.7]}>
         <ContactShadow size={[1.6, 1.6]} />
-        <mesh position={[0, 0.1, 0]}>
-          <boxGeometry args={[0.9, 0.2, 0.9]} />
-          <meshStandardMaterial map={T.nogueira} roughness={0.5} transparent />
-        </mesh>
-        <mesh position={[0, 2.35, 0]}>
-          <boxGeometry args={[0.9, 0.1, 0.9]} />
-          <meshStandardMaterial map={T.nogueira} roughness={0.5} transparent />
-        </mesh>
+        {/* Base pousa primeiro */}
+        <Part position={[0, 0.1, 0]} offset={[0, -0.7, 0]} win={[0, 0.16]}>
+          <mesh>
+            <boxGeometry args={[0.9, 0.2, 0.9]} />
+            <meshStandardMaterial map={T.nogueira} roughness={0.5} transparent />
+          </mesh>
+        </Part>
+        {/* Montantes de latão sobem um a um */}
         {[
           [-0.42, -0.42],
           [-0.42, 0.42],
           [0.42, -0.42],
           [0.42, 0.42],
-        ].map(([x, z], i) => (
-          <mesh key={i} position={[x, 1.25, z]}>
-            <boxGeometry args={[0.04, 2.1, 0.04]} />
-            <meshStandardMaterial {...FIN.brass} transparent />
-          </mesh>
-        ))}
+        ].map(([x, z], i) => {
+          const start = 0.14 + i * 0.1;
+          return (
+            <Part key={i} position={[x, 1.25, z]} offset={[0, -2.1, 0]} win={[start, start + 0.16]}>
+              <mesh>
+                <boxGeometry args={[0.04, 2.1, 0.04]} />
+                <meshStandardMaterial {...FIN.brass} transparent />
+              </mesh>
+            </Part>
+          );
+        })}
+        {/* Vidros fecham as quatro faces */}
         {[
-          { pos: [0, 1.25, 0.43] as const, rot: 0 },
-          { pos: [0, 1.25, -0.43] as const, rot: 0 },
-          { pos: [0.43, 1.25, 0] as const, rot: Math.PI / 2 },
-          { pos: [-0.43, 1.25, 0] as const, rot: Math.PI / 2 },
+          { pos: [0, 1.25, 0.43] as const, rot: 0, off: [0, 0, 0.5] as const },
+          { pos: [0, 1.25, -0.43] as const, rot: 0, off: [0, 0, -0.5] as const },
+          { pos: [0.43, 1.25, 0] as const, rot: Math.PI / 2, off: [0.5, 0, 0] as const },
+          { pos: [-0.43, 1.25, 0] as const, rot: Math.PI / 2, off: [-0.5, 0, 0] as const },
         ].map((g, i) => (
-          <mesh
+          <Part
             key={i}
             position={[g.pos[0], g.pos[1], g.pos[2]]}
             rotation={[0, g.rot, 0]}
-            userData={{ baseOpacity: 0.14 }}
+            offset={g.off}
+            win={[0.54 + i * 0.05, 0.74 + i * 0.05]}
           >
-            <boxGeometry args={[0.82, 2.1, 0.015]} />
-            <meshStandardMaterial {...FIN.glass} transparent />
-          </mesh>
+            <mesh userData={{ baseOpacity: 0.14 }}>
+              <boxGeometry args={[0.82, 2.1, 0.015]} />
+              <meshStandardMaterial {...FIN.glass} transparent />
+            </mesh>
+          </Part>
         ))}
+        {/* Prateleiras de vidro descem com a peça exposta */}
         {[0.95, 1.7].map((y, i) => (
-          <group key={i}>
-            <mesh position={[0, y, 0]} userData={{ baseOpacity: 0.25 }}>
+          <Part key={i} position={[0, y, 0]} offset={[0, 0.9, 0]} win={[0.74 + i * 0.08, 0.92 + i * 0.08]}>
+            <mesh userData={{ baseOpacity: 0.25 }}>
               <boxGeometry args={[0.78, 0.018, 0.78]} />
               <meshStandardMaterial {...FIN.glass} transparent />
             </mesh>
             <Vase
-              position={[0, y + 0.01, 0]}
+              position={[0, 0.01, 0]}
               height={0.22}
               radius={0.05}
               color={i === 0 ? "#d9cfbc" : "#b89a6a"}
             />
-          </group>
+          </Part>
         ))}
-        <mesh position={[0, 2.28, 0]}>
-          <boxGeometry args={[0.5, 0.02, 0.5]} />
-          <meshStandardMaterial {...FIN.led} transparent />
-        </mesh>
+        {/* Tampo e LED de coroamento por último */}
+        <Part position={[0, 2.35, 0]} offset={[0, 0.6, 0]} win={[0.88, 1]}>
+          <mesh>
+            <boxGeometry args={[0.9, 0.1, 0.9]} />
+            <meshStandardMaterial map={T.nogueira} roughness={0.5} transparent />
+          </mesh>
+          <mesh position={[0, -0.07, 0]}>
+            <boxGeometry args={[0.5, 0.02, 0.5]} />
+            <meshStandardMaterial {...FIN.led} transparent />
+          </mesh>
+        </Part>
       </Piece>
 
       {/* ===== Mesa expositora redonda com produtos ===== */}
@@ -1620,38 +1826,57 @@ function AssemblyScene({ progress }: { progress: Progress }) {
       {/* ===== Credenza suspensa em pés de latão ===== */}
       <Piece progress={progress} window={[0.64, 0.75]} from={[-1.6, 0, 7]} to={[-1.6, 0, -3.5]}>
         <ContactShadow size={[2.4, 1.1]} />
-        <mesh position={[0, 0.62, 0]}>
-          <boxGeometry args={[1.8, 0.62, 0.55]} />
-          <meshStandardMaterial map={T.freijo} roughness={0.5} transparent />
-        </mesh>
-        <mesh position={[0, 0.62, 0.28]}>
-          <boxGeometry args={[0.015, 0.58, 0.012]} />
-          <meshStandardMaterial color="#1a120a" roughness={0.8} transparent />
-        </mesh>
-        {[-0.12, 0.12].map((x, i) => (
-          <mesh key={i} position={[x, 0.62, 0.295]}>
-            <boxGeometry args={[0.035, 0.34, 0.025]} />
-            <meshStandardMaterial {...FIN.brass} transparent />
-          </mesh>
-        ))}
-        <mesh position={[0, 0.95, 0]}>
-          <boxGeometry args={[1.86, 0.04, 0.6]} />
-          <meshStandardMaterial map={T.stone} roughness={0.3} transparent />
-        </mesh>
+        {/* Pés de latão fincam primeiro */}
         {[
           [-0.78, -0.2],
           [-0.78, 0.2],
           [0.78, -0.2],
           [0.78, 0.2],
         ].map(([x, z], i) => (
-          <mesh key={i} position={[x, 0.155, z]}>
-            <cylinderGeometry args={[0.018, 0.014, 0.31, 10]} />
-            <meshStandardMaterial {...FIN.brass} transparent />
-          </mesh>
+          <Part key={i} position={[x, 0.155, z]} offset={[0, -0.45, 0]} win={[0, 0.18]}>
+            <mesh>
+              <cylinderGeometry args={[0.018, 0.014, 0.31, 10]} />
+              <meshStandardMaterial {...FIN.brass} transparent />
+            </mesh>
+          </Part>
         ))}
-        <BranchVase position={[-0.55, 0.97, 0]} />
-        <BookStack position={[0.1, 0.97, 0.02]} />
-        <TableLamp position={[0.6, 0.97, -0.05]} />
+        {/* Corpo desce e pousa sobre os pés */}
+        <Part position={[0, 0.62, 0]} offset={[0, 0.8, 0]} win={[0.18, 0.42]}>
+          <mesh>
+            <boxGeometry args={[1.8, 0.62, 0.55]} />
+            <meshStandardMaterial map={T.freijo} roughness={0.5} transparent />
+          </mesh>
+          <mesh position={[0, 0, 0.28]}>
+            <boxGeometry args={[0.015, 0.58, 0.012]} />
+            <meshStandardMaterial color="#1a120a" roughness={0.8} transparent />
+          </mesh>
+        </Part>
+        {/* Tampo de pedra fecha o corpo */}
+        <Part position={[0, 0.95, 0]} offset={[0, 0.6, 0]} win={[0.42, 0.6]}>
+          <mesh>
+            <boxGeometry args={[1.86, 0.04, 0.6]} />
+            <meshStandardMaterial map={T.stone} roughness={0.3} transparent />
+          </mesh>
+        </Part>
+        {/* Puxadores são fixados na frente das portas */}
+        {[-0.12, 0.12].map((x, i) => (
+          <Part key={i} position={[x, 0.62, 0.295]} offset={[0, 0, 0.3]} win={[0.6, 0.76]}>
+            <mesh>
+              <boxGeometry args={[0.035, 0.34, 0.025]} />
+              <meshStandardMaterial {...FIN.brass} transparent />
+            </mesh>
+          </Part>
+        ))}
+        {/* Decoração pousa no tampo (y=0.97) por último */}
+        <Part position={[-0.55, 0.97, 0]} offset={[0, 0.45, 0]} win={[0.78, 1]}>
+          <BranchVase position={[0, 0, 0]} />
+        </Part>
+        <Part position={[0.1, 0.97, 0.02]} offset={[0, 0.45, 0]} win={[0.82, 1]}>
+          <BookStack position={[0, 0, 0]} />
+        </Part>
+        <Part position={[0.6, 0.97, -0.05]} offset={[0, 0.45, 0]} win={[0.86, 1]}>
+          <TableLamp position={[0, 0, 0]} />
+        </Part>
       </Piece>
 
       {/* ===== Plantas de piso ===== */}

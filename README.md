@@ -11,6 +11,44 @@ npm run dev
 
 Abra http://localhost:5173
 
+Para usar colaboração/CRM em tempo real entre dispositivos, rode também o relay:
+
+```bash
+npm run server
+```
+
+Por padrão o front tenta `ws://<host-do-site>:8787`. Para apontar para outro host/IP,
+copie `.env.example` para `.env` e ajuste `VITE_COLLAB_WS_URL`.
+
+Em teste com celular na mesma rede, suba o Vite escutando na rede local:
+
+```bash
+npm run dev:host
+```
+
+CRM dos atendimentos 3D: `#/crm`.
+
+## Deploy online
+
+O front está preparado para Vercel. O relay WebSocket precisa rodar em um serviço
+Node persistente separado (Render, Railway, Fly.io, VPS etc.), porque a Vercel não
+hospeda conexões WebSocket permanentes em Functions.
+
+No host do relay, use:
+
+```bash
+npm install
+npm run server
+```
+
+Depois configure no projeto da Vercel:
+
+```bash
+VITE_COLLAB_WS_URL=wss://seu-relay-online
+```
+
+E faça um novo deploy do front.
+
 Para gerar a versão de produção:
 
 ```bash

@@ -80,7 +80,10 @@ export default function Footer() {
           <p>
             © {year} {brand.name} — {brand.tagline}. Todos os direitos reservados.
           </p>
-          <p className="opacity-60">Mobiliário sob medida para grandes operações.</p>
+          <div className="flex items-center gap-4 opacity-60">
+            <span>Mobiliário sob medida para grandes operações.</span>
+            <a href="#/crm" className="transition-colors hover:text-champagne">Área da equipe</a>
+          </div>
         </div>
       </div>
     </footer>

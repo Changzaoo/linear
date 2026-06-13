@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import ScrollFurnitureAssembly from "./ScrollFurnitureAssembly";
+import Orcamento3DEntry from "../features/orcamento3d/Orcamento3DEntry";
 import { siteData, whatsappLink } from "../data/siteData";
 
 /**
@@ -99,12 +100,15 @@ export default function Hero() {
         {/* Frase final da montagem */}
         <motion.div
           style={{ opacity: finalOpacity, filter: finalBlur }}
-          className="pointer-events-none absolute inset-x-0 bottom-24 flex justify-center px-6"
+          className="pointer-events-none absolute inset-x-0 bottom-[34vh] flex justify-center px-6"
         >
           <p className="max-w-2xl text-center font-display text-2xl italic text-text md:text-4xl">
             “{hero.finalPhrase}”
           </p>
         </motion.div>
+
+        {/* Chamada do Estúdio 3D de Orçamento — surge com a cena montada */}
+        <Orcamento3DEntry progress={scrollYProgress} />
 
         {/* Indicador de scroll */}
         <motion.div

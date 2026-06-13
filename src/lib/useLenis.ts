@@ -12,8 +12,9 @@ import Lenis from "lenis";
  * - No touch o scroll permanece nativo (comportamento padrão do Lenis),
  *   evitando conflito com gestos no mobile.
  */
-export function useLenis() {
+export function useLenis(enabled = true) {
   useEffect(() => {
+    if (!enabled) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const lenis = new Lenis({
@@ -31,5 +32,5 @@ export function useLenis() {
       cancelAnimationFrame(raf);
       lenis.destroy();
     };
-  }, []);
+  }, [enabled]);
 }

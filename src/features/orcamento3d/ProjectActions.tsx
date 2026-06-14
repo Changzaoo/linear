@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import Portal from "./Portal";
 import { Btn, Field } from "./studioUi";
 import {
   actions,
@@ -170,6 +171,7 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
       )}
 
       {/* action sheet mobile */}
+      <Portal>
       <AnimatePresence>
         {sheet && variant === "mobile" && (
           <motion.div
@@ -191,8 +193,10 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
           </motion.div>
         )}
       </AnimatePresence>
+      </Portal>
 
       {/* diálogos */}
+      <Portal>
       <AnimatePresence>
         {dialog && (
           <motion.div
@@ -287,6 +291,7 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
           </motion.div>
         )}
       </AnimatePresence>
+      </Portal>
     </>
   );
 }

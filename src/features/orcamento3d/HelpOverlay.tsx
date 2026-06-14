@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import Portal from "./Portal";
 import { isMobileViewport } from "../../lib/webgl";
 import { useOrc3d } from "./useOrcamento3DStore";
 
@@ -79,6 +80,7 @@ export default function HelpOverlay() {
         ?
       </button>
 
+      <Portal>
       <AnimatePresence>
         {open && (
           <motion.div
@@ -121,6 +123,7 @@ export default function HelpOverlay() {
           </motion.div>
         )}
       </AnimatePresence>
+      </Portal>
     </>
   );
 }

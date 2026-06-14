@@ -56,7 +56,7 @@ export function publishCursor(x: number, z: number, floor = 0, ry = 0, moving = 
   session.publishPresence({
     id: myPeerId,
     role: s.role,
-    name: s.role === "arquiteto" ? "Arquiteto" : s.doc.client.name || "Cliente",
+    name: s.role === "arquiteto" ? (s.architectName || "Arquiteto") : s.doc.client.name || "Cliente",
     cursor: { x, z, floor, ry, moving },
     at: now,
   });

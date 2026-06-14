@@ -51,11 +51,17 @@ export function fromCrmProjectDoc(crm: CrmProjectDoc, current: Doc): Doc {
     const prev = prevByUid.get(cf.uid);
     const cat = CATALOG_MAP[cf.catalogId];
 
-    const config: FurnitureConfig = prev
+    const baseConfig: FurnitureConfig = prev
       ? { ...prev.config, material: cf.material || prev.config.material }
       : cat
         ? { ...defaultConfigFor(cat), material: cf.material || defaultConfigFor(cat).material }
         : fallbackConfig(cf.material);
+
+    // preserva/recebe modelo 3D importado que tenha vindo pela ponte
+    const anyCf = cf as { modelUrl?: string; modelFormat?: string };
+    const config: FurnitureConfig = anyCf.modelUrl
+      ? { ...baseConfig, modelUrl: anyCf.modelUrl, modelFormat: anyCf.modelFormat }
+      : baseConfig;
 
     // Y (altura da base): preserva o do site; para móvel novo do arquiteto usa
     // a montagem do catálogo (aéreo/suspenso) ou o chão.

@@ -1,8 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Edges } from "@react-three/drei";
+import * as THREE from "three";
 import { stoneTexture } from "../../lib/textures";
 import type { PlacedFurniture } from "./types";
 import { getSurface, SurfaceProps } from "./furnitureSurface";
+import { fitObject, loadModelObject, type ModelFormat } from "./modelImport";
 
 const M = 0.01; // cm → m
 const BRASS = { color: "#caa86a", roughness: 0.3, metalness: 0.7 };
@@ -382,6 +384,44 @@ function CategoryModel({ f, s, stone }: { f: PlacedFurniture; s: SurfaceProps; s
   );
 }
 
+/* ---------- modelo 3D importado pelo cliente ---------- */
+function ImportedModel({ f }: { f: PlacedFurniture }) {
+  const [obj, setObj] = useState<THREE.Object3D | null>(null);
+  const url = f.config.modelUrl!;
+  const fmt = (f.config.modelFormat || "glb") as ModelFormat;
+  const w = f.width * M;
+  const h = f.height * M;
+  const d = f.depth * M;
+
+  useEffect(() => {
+    let alive = true;
+    setObj(null);
+    loadModelObject(url, fmt)
+      .then((o) => {
+        if (!alive) return;
+        fitObject(o, { w, h, d });
+        setObj(o);
+      })
+      .catch(() => {
+        /* arquivo inválido: mostra o placeholder */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [url, fmt, w, h, d]);
+
+  if (!obj) {
+    // placeholder enquanto carrega / se falhar
+    return (
+      <mesh position={[0, h / 2, 0]}>
+        <boxGeometry args={[w, h, d]} />
+        <meshStandardMaterial color="#3a3128" roughness={0.8} transparent opacity={0.5} />
+      </mesh>
+    );
+  }
+  return <primitive object={obj} />;
+}
+
 interface Props {
   f: PlacedFurniture;
   selected: boolean;
@@ -405,7 +445,7 @@ export default function FurnitureMesh({ f, selected, floorY, onPointerDown }: Pr
       rotation={[0, f.rotationY, 0]}
       onPointerDown={onPointerDown}
     >
-      <CategoryModel f={f} s={s} stone={stone} />
+      {f.config.modelUrl ? <ImportedModel f={f} /> : <CategoryModel f={f} s={s} stone={stone} />}
 
       {/* contorno de seleção */}
       {selected && (

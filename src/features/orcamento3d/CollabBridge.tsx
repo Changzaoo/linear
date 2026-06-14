@@ -108,7 +108,7 @@ export default function CollabBridge() {
       session.publishPresence({
         id: myPeerId,
         role: s.role,
-        name: s.role === "arquiteto" ? "Arquiteto" : s.doc.client.name || "Cliente",
+        name: s.role === "arquiteto" ? (s.architectName || "Arquiteto") : s.doc.client.name || "Cliente",
         at: Date.now(),
       });
       prunePeers();

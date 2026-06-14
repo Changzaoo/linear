@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { FURNITURE_CATALOG, CATEGORY_LABELS } from "./furnitureCatalog";
 import { actions } from "./useOrcamento3DStore";
 import { brl } from "./pricingEngine";
 import FurniturePreview from "./FurniturePreview";
+import { ACCEPTED_3D, importModelFile } from "./modelImport";
+import { toast } from "./toast";
 import type { FurnitureCategory } from "./types";
 
 const COMPLEXITY_DOT: Record<string, string> = {
@@ -14,6 +16,29 @@ const COMPLEXITY_DOT: Record<string, string> = {
 export default function FurnitureLibrary() {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<FurnitureCategory | "todos">("todos");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+
+  const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite reimportar o mesmo arquivo
+    if (!file) return;
+    setImporting(true);
+    try {
+      const m = await importModelFile(file);
+      actions.addImportedModel({ name: m.name, url: m.dataUrl, format: m.format, size: m.size });
+      toast(
+        m.tooBig
+          ? "Modelo importado. Atenção: arquivo grande pode não sincronizar com o arquiteto."
+          : "Modelo 3D importado e adicionado à cena.",
+        m.tooBig ? "warn" : "success"
+      );
+    } catch (err: any) {
+      toast(err?.message || "Não foi possível importar este modelo.", "warn");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const cats = useMemo(() => {
     const set = new Set(FURNITURE_CATALOG.map((f) => f.category));
@@ -53,6 +78,17 @@ export default function FurnitureLibrary() {
             </button>
           ))}
         </div>
+
+        <input ref={fileRef} type="file" accept={ACCEPTED_3D} className="hidden" onChange={onImport} />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={importing}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-champagne/40 bg-champagne/5 px-3 py-2 text-xs font-medium text-champagne transition hover:bg-champagne/10 disabled:opacity-60"
+          title="Importar modelo .glb, .gltf, .obj, .stl ou .fbx"
+        >
+          {importing ? "Importando…" : "⬆ Importar modelo 3D"}
+        </button>
+        <p className="mt-1 text-center text-[10px] text-muted">glb · gltf · obj · stl · fbx</p>
       </div>
 
       <div className="grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto px-3 pb-3">

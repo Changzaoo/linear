@@ -50,6 +50,8 @@ export interface EditorState {
   status: ProjectStatus;
   assistedByArchitect: boolean;
   attendanceId?: string;
+  /** nome real do arquiteto na sessão (substitui o rótulo "Arquiteto"). */
+  architectName?: string;
   thumbnail?: string;
   selectedUid: string | null;
   role: "cliente" | "arquiteto";
@@ -245,6 +247,50 @@ export const actions = {
         config: defaultConfigFor(item),
         basePrice: item.basePrice,
         complexity: item.complexity,
+      });
+    });
+    orc3dStore.setState({ selectedUid: newUid });
+  },
+
+  /** Adiciona um modelo 3D importado pelo usuário (glb/gltf/obj/stl/fbx). */
+  addImportedModel(model: { name: string; url: string; format: string; size: { x: number; y: number; z: number } }) {
+    const s = orc3dStore.getState();
+    if (s.doc.furniture.length >= ENV_LIMITS.maxFurniture) {
+      orc3dStore.setState({ warning: "Limite de móveis por projeto atingido." });
+      return;
+    }
+    const cm = (m: number) => Math.max(5, Math.round(m * 100));
+    const newUid = uid();
+    const cleanName = model.name.replace(/\.[^.]+$/, "").slice(0, 40) || "Modelo importado";
+    commitDoc((d) => {
+      d.furniture.push({
+        uid: newUid,
+        itemId: "modelo-importado",
+        name: cleanName,
+        category: "armario",
+        floor: s.activeFloor,
+        width: cm(model.size.x),
+        height: cm(model.size.y),
+        depth: cm(model.size.z),
+        position: [0, 0, 0],
+        rotationY: 0,
+        locked: false,
+        config: {
+          material: "mdf_amadeirado",
+          finish: "fosco",
+          handle: "sem",
+          doors: 0,
+          drawers: 0,
+          thickness: 1.8,
+          led: false,
+          suspended: false,
+          surface: "madeira",
+          modelUrl: model.url,
+          modelFormat: model.format,
+          modelName: cleanName,
+        },
+        basePrice: 0,
+        complexity: "medio",
       });
     });
     orc3dStore.setState({ selectedUid: newUid });
@@ -481,10 +527,11 @@ export const actions = {
   },
 
   /** Carrega um projeto existente (ex.: arquiteto abrindo pelo CRM). */
-  loadProject(project: import("./types").Project3D, attendanceId?: string) {
+  loadProject(project: import("./types").Project3D, attendanceId?: string, architectName?: string) {
     orc3dStore.setState({
       phase: "editing",
       projectId: project.id,
+      architectName: architectName?.trim() || undefined,
       doc: {
         name: project.name,
         environment: project.environment,

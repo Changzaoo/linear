@@ -298,9 +298,13 @@ function CameraRig({
       camera.position.set(r * 0.85, floorY + r * 0.95, r * 0.85);
       camera.lookAt(0, floorY + 0.4, 0);
     } else if (mode === "topo") {
+      // Planta baixa real: câmera direto acima, "up" no Y (não no Z — esse era
+      // o bug: com up=(0,0,-1) o OrbitControls travava o ângulo polar em 0 e
+      // jogava a câmera para uma vista lateral). O OrbitControls trava polar e
+      // azimute em 0 (ver abaixo), então fica sempre olhando para baixo.
       const r = Math.max(w, d);
-      camera.up.set(0, 0, -1);
-      camera.position.set(0, floorY + r * 1.35, 0.001);
+      camera.up.set(0, 1, 0);
+      camera.position.set(0, floorY + r * 1.6, 0.001);
       camera.lookAt(0, floorY, 0);
     } else if (mode === "terceira") {
       camera.up.set(0, 1, 0);
@@ -564,14 +568,16 @@ function SceneContents({ mobile }: { mobile: boolean }) {
         <OrbitControls
           ref={orbitRef}
           makeDefault
-          enableDamping
+          enableDamping={viewMode === "isometrico"}
           dampingFactor={0.1}
           enableRotate={viewMode === "isometrico"}
           minDistance={1.5}
           maxDistance={Math.max(env.width, env.depth) / 40}
           minPolarAngle={viewMode === "topo" ? 0 : 0.2}
-          maxPolarAngle={viewMode === "topo" ? 0.01 : Math.PI / 2.05}
-          target={[0, activeFloorY + 0.4, 0]}
+          maxPolarAngle={viewMode === "topo" ? 0 : Math.PI / 2.05}
+          minAzimuthAngle={viewMode === "topo" ? 0 : -Infinity}
+          maxAzimuthAngle={viewMode === "topo" ? 0 : Infinity}
+          target={[0, viewMode === "topo" ? activeFloorY : activeFloorY + 0.4, 0]}
         />
       )}
       {viewMode === "primeira" && !mobile && <PointerLockControls makeDefault />}

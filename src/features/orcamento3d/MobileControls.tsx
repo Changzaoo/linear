@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { fpInput } from "./fpInput";
 import { useOrc3d } from "./useOrcamento3DStore";
+import type { Orientation } from "../../lib/useDeviceInfo";
 
-/* Controles touch para o modo primeira pessoa no mobile:
-   joystick à esquerda (mover) e área livre à direita (olhar). */
-export default function MobileControls() {
+/* Controles touch para 1ª/3ª pessoa no mobile — adaptados a retrato e
+   paisagem: joystick de movimento (esq.), área de olhar (1ª pessoa, dir.)
+   e botão Correr. Tamanhos e posições mudam conforme a orientação. */
+export default function MobileControls({ orientation }: { orientation: Orientation }) {
   const mode = useOrc3d((s) => s.viewMode);
   const knobRef = useRef<HTMLDivElement>(null);
   const baseRef = useRef<HTMLDivElement>(null);
@@ -21,6 +23,11 @@ export default function MobileControls() {
 
   if (mode !== "primeira" && mode !== "terceira") return null;
 
+  const land = orientation === "landscape";
+  const joy = land ? 92 : 116; // diâmetro do joystick
+  const knob = joy * 0.42;
+  const travel = joy * 0.32;
+
   const onJoyMove = (clientX: number, clientY: number) => {
     const base = baseRef.current;
     if (!base) return;
@@ -36,7 +43,7 @@ export default function MobileControls() {
     }
     fpInput.strafe = dx;
     fpInput.forward = -dy;
-    if (knobRef.current) knobRef.current.style.transform = `translate(${dx * 28}px, ${dy * 28}px)`;
+    if (knobRef.current) knobRef.current.style.transform = `translate(${dx * travel}px, ${dy * travel}px)`;
   };
 
   const resetJoy = () => {
@@ -45,12 +52,17 @@ export default function MobileControls() {
     if (knobRef.current) knobRef.current.style.transform = "translate(0,0)";
   };
 
+  // posições por orientação (acima da fileira de FABs no canto inferior)
+  const joyPos = land ? "bottom-16 left-4" : "bottom-28 left-5";
+  const sprintPos = land ? "bottom-16 left-32" : "bottom-[13rem] left-7";
+
   return (
     <div className="pointer-events-none fixed inset-0 z-30 select-none">
-      {/* joystick */}
+      {/* joystick de movimento */}
       <div
         ref={baseRef}
-        className="pointer-events-auto absolute bottom-24 left-6 h-28 w-28 touch-none rounded-full border border-champagne/30 bg-[rgba(18,16,14,0.55)] backdrop-blur-sm"
+        style={{ width: joy, height: joy }}
+        className={`pointer-events-auto absolute ${joyPos} touch-none rounded-full border border-champagne/30 bg-[rgba(18,16,14,0.55)] backdrop-blur-sm`}
         onPointerDown={(e) => {
           joyId.current = e.pointerId;
           (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -60,12 +72,17 @@ export default function MobileControls() {
         onPointerUp={() => { joyId.current = null; resetJoy(); }}
         onPointerCancel={() => { joyId.current = null; resetJoy(); }}
       >
-        <div ref={knobRef} className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-champagne/40" />
+        <div
+          ref={knobRef}
+          style={{ width: knob, height: knob }}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-champagne/40"
+        />
       </div>
 
+      {/* área de olhar (somente 1ª pessoa), recuada para não cobrir os FABs */}
       {mode === "primeira" && (
         <div
-          className="pointer-events-auto absolute bottom-0 right-0 top-0 w-1/2 touch-none"
+          className="pointer-events-auto absolute right-0 top-16 bottom-16 w-1/2 touch-none"
           onPointerDown={(e) => { lookId.current = e.pointerId; lookLast.current = { x: e.clientX, y: e.clientY }; }}
           onPointerMove={(e) => {
             if (lookId.current !== e.pointerId || !lookLast.current) return;
@@ -78,15 +95,17 @@ export default function MobileControls() {
         />
       )}
 
-      {/* sprint */}
+      {/* correr */}
       <button
-        className="pointer-events-auto absolute bottom-44 left-8 rounded-full border border-champagne/30 bg-[rgba(18,16,14,0.6)] px-4 py-2 text-xs text-champagne backdrop-blur-sm active:bg-champagne/20"
+        className={`pointer-events-auto absolute ${sprintPos} rounded-full border border-champagne/30 bg-[rgba(18,16,14,0.6)] px-4 py-2 text-xs text-champagne backdrop-blur-sm active:bg-champagne/20`}
         onPointerDown={() => (fpInput.sprint = true)}
         onPointerUp={() => (fpInput.sprint = false)}
         onPointerLeave={() => (fpInput.sprint = false)}
       >
         Correr
       </button>
+
+      {/* dica para iso/topo não aparece aqui (só modos a pé) */}
     </div>
   );
 }

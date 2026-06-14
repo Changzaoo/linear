@@ -15,7 +15,12 @@ export function supportsWebGL(): boolean {
   return cached;
 }
 
-/** True em telas pequenas — usado para simplificar as cenas 3D no mobile. */
+/** True em dispositivos de mão (inclui celular DEITADO, cuja largura passa de
+    768px) — usa o menor lado da tela e a capacidade de toque, não só a largura. */
 export function isMobileViewport(): boolean {
-  return typeof window !== "undefined" && window.innerWidth < 768;
+  if (typeof window === "undefined") return false;
+  const touch = "ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0;
+  const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+  const minSide = Math.min(window.innerWidth, window.innerHeight);
+  return (touch && coarse && minSide <= 820) || minSide < 768;
 }

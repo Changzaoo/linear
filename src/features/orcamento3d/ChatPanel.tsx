@@ -16,6 +16,7 @@ export default function ChatPanel({
   const messages = useOrc3d((s) => s.chat);
   const attendanceId = useOrc3d((s) => s.attendanceId);
   const clientName = useOrc3d((s) => s.doc.client.name);
+  const architectName = useOrc3d((s) => s.architectName);
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -29,7 +30,7 @@ export default function ChatPanel({
     const msg: ChatMessage = {
       id: uid(),
       author,
-      authorName: author === "cliente" ? clientName || "Cliente" : "Arquiteto",
+      authorName: author === "cliente" ? clientName || "Cliente" : architectName || "Arquiteto",
       text: t.slice(0, 600),
       at: new Date().toISOString(),
     };

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { supportsWebGL, isMobileViewport } from "../../lib/webgl";
+import { supportsWebGL } from "../../lib/webgl";
+import { useDeviceInfo } from "../../lib/useDeviceInfo";
 import Editor3DScene from "./Editor3DScene";
 import EnvironmentSetup from "./EnvironmentSetup";
 import LeadCaptureModal from "./LeadCaptureModal";
@@ -17,6 +18,8 @@ import CollabBridge from "./CollabBridge";
 import ArchitectPresence from "./ArchitectPresence";
 import VoiceChat from "./VoiceChat";
 import HelpOverlay from "./HelpOverlay";
+import ViewportHud from "./ViewportHud";
+import Tutorial, { openTutorial } from "./Tutorial";
 import NetStatus from "./NetStatus";
 import { dlog } from "./dlog";
 import { Panel, Btn } from "./studioUi";
@@ -63,7 +66,7 @@ export default function Orcamento3DApp() {
   const role = useOrc3d((s) => s.role);
   const warning = useOrc3d((s) => s.warning);
   const leadCaptured = useOrc3d((s) => s.leadCaptured);
-  const mobile = isMobileViewport();
+  const { isMobile: mobile, orientation } = useDeviceInfo();
   const webgl = supportsWebGL();
 
   const [recover, setRecover] = useState(false);
@@ -172,6 +175,7 @@ export default function Orcamento3DApp() {
       className="fixed inset-0 z-50 bg-[#0c0a08] text-text"
     >
       <ToastHost />
+      <Tutorial />
 
       {/* recuperação de projeto */}
       <AnimatePresence>
@@ -208,6 +212,7 @@ export default function Orcamento3DApp() {
             </div>
             <div className="flex items-center gap-1.5">
               <VoiceChat />
+              <Btn size="sm" onClick={openTutorial} title="Abrir o tutorial do editor 3D">Tutorial</Btn>
               <HelpOverlay />
               <Btn size="sm" onClick={toggleFullscreen} title="Tela cheia">⤢</Btn>
               <div className="hidden lg:block">
@@ -226,6 +231,7 @@ export default function Orcamento3DApp() {
             {/* canvas */}
             <div className="relative flex-1">
               <Editor3DScene mobile={mobile} />
+              <ViewportHud mobile={mobile} />
               <div className="absolute left-3 top-3 z-10">
                 <FloorControls />
               </div>
@@ -238,7 +244,7 @@ export default function Orcamento3DApp() {
                 </div>
               )}
 
-              {mobile && <MobileControls />}
+              {mobile && <MobileControls orientation={orientation} />}
 
               {/* ações fixas no mobile (FABs que não estouram a tela) */}
               <div className="absolute right-3 top-3 flex flex-col items-end gap-2 lg:hidden">

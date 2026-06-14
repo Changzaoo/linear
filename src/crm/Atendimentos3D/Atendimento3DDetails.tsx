@@ -53,7 +53,7 @@ export default function Atendimento3DDetails({
   const p = att.project;
 
   const enterEnvironment = () => {
-    studioActions.loadProject(p, att.id);
+    studioActions.loadProject(p, att.id, att.architectName);
     setAttendanceStatus(att.id, "em-atendimento");
     openStudio();
     onClose();

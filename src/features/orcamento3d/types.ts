@@ -60,6 +60,11 @@ export interface FurnitureConfig {
   led: boolean;
   suspended: boolean;
   surface: "madeira" | "vidro" | "metal";
+  /** modelo 3D importado (data URL) — quando presente, renderiza o arquivo
+      do cliente no lugar da geometria gerada. */
+  modelUrl?: string;
+  modelFormat?: string; // glb | gltf | obj | stl | fbx
+  modelName?: string;
 }
 
 /** Um móvel posicionado no ambiente. */

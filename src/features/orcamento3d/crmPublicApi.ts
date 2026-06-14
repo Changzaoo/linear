@@ -29,6 +29,9 @@ type CrmFurniture = {
   locked: boolean;
   /** preço estimado da peça (R$) — alimenta o resumo do funil */
   preco: number;
+  /** modelo 3D importado (data URL) — quando presente, substitui a geometria */
+  modelUrl?: string;
+  modelFormat?: string;
 };
 
 /** Resumo financeiro/qualificação enviado junto ao doc — usado pelo
@@ -171,6 +174,9 @@ export function toCrmProjectDoc(project: Project3D): CrmProjectDoc {
       color: colorFor(item.config?.material),
       locked: !!item.locked,
       preco,
+      ...(item.config?.modelUrl
+        ? { modelUrl: item.config.modelUrl, modelFormat: item.config.modelFormat }
+        : {}),
     };
   });
 

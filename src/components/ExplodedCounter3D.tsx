@@ -40,6 +40,20 @@ function ExposureTuning() {
   return null;
 }
 
+/** Enquadramento responsivo: em telas retrato o balcão (largo) seria cortado
+    nas laterais, então afastamos a câmera proporcionalmente ao formato da tela
+    para que o móvel inteiro caiba na visão — inclusive ao girar o aparelho. */
+function FitCamera() {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const aspect = size.width / Math.max(1, size.height);
+    const fit = aspect < 1.5 ? Math.min(1.5 / aspect, 2.1) : 1;
+    camera.position.set(0, 0.6, 6.4 * fit);
+    (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+  }, [camera, size.width, size.height]);
+  return null;
+}
+
 interface LayerProps {
   progress: MotionValue<number>;
   /** Eixo de encaixe da peça: direção e distância máxima de separação. */
@@ -132,6 +146,7 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
         <Lightformer intensity={0.7} color="#6e7a86" position={[5, 3, 4]} rotation-y={-Math.PI / 2} scale={[4, 2, 1]} />
       </Environment>
       <ExposureTuning />
+      <FitCamera />
 
       {/* Sombra de contato fixa sob o balcão (aterra o objeto) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.95, 0]}>
@@ -389,7 +404,7 @@ export default function ExplodedCounter3D() {
 
   return (
     <section ref={containerRef} className="relative h-[300vh]">
-      <div className="sticky top-0 flex h-screen items-center overflow-hidden">
+      <div className="sticky top-0 flex h-svh items-center overflow-hidden">
         {/* Canvas 3D */}
         <div className="absolute inset-0">
           {supportsWebGL() ? (

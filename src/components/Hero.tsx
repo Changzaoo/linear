@@ -30,7 +30,7 @@ export default function Hero() {
 
   return (
     <section id="inicio" ref={containerRef} className="relative h-[320vh] md:h-[420vh]">
-      <div className="sticky top-0 h-screen overflow-hidden">
+      <div className="sticky top-0 h-svh overflow-hidden">
         {/* Cena 3D */}
         <div className="absolute inset-0">
           <ScrollFurnitureAssembly progress={scrollYProgress} />

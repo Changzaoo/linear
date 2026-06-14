@@ -14,9 +14,11 @@ import MobileControls from "./MobileControls";
 import ChatPanel from "./ChatPanel";
 import ToastHost from "./ToastHost";
 import CollabBridge from "./CollabBridge";
+import ArchitectPresence from "./ArchitectPresence";
 import VoiceChat from "./VoiceChat";
 import HelpOverlay from "./HelpOverlay";
 import NetStatus from "./NetStatus";
+import { dlog } from "./dlog";
 import { Panel, Btn } from "./studioUi";
 import {
   actions,
@@ -102,6 +104,7 @@ export default function Orcamento3DApp() {
     const created = await createCrmLead(form, previewProjectWithLead(form));
     actions.captureLead(form);
     actions.setProjectId(created.projetoId);
+    dlog("3D_SESSION", "Lead criado no CRM:", { leadId: created.leadId, projetoId: created.projetoId });
     const att = create3DAttendance(buildProject3D());
     actions.setAttendanceId(att.id);
     toast("Lead registrado. Agora monte o ambiente em 3D.", "success");
@@ -118,6 +121,7 @@ export default function Orcamento3DApp() {
     if (assisted) {
       const { notified, attendance } = notifyAvailableArchitects(buildProject3D());
       actions.setAttendanceId(attendance.id);
+      dlog("CRM_CALL", "Chamado de arquiteto criado:", { attendanceId: attendance.id, projetoId: buildProject3D().id, notified });
       void callCrmArchitect(buildProject3D()).catch(() => {
         toast("Nao foi possivel avisar o Suporte 3D agora.", "warn");
       });
@@ -225,6 +229,8 @@ export default function Orcamento3DApp() {
               <div className="absolute left-3 top-3 z-10">
                 <FloorControls />
               </div>
+
+              <ArchitectPresence />
 
               {warning && (
                 <div className="pointer-events-none absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg border border-amber-400/40 bg-[rgba(40,30,10,0.85)] px-4 py-2 text-xs text-amber-200 backdrop-blur-md">

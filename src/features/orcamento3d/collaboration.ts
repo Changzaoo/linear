@@ -24,6 +24,8 @@ export interface Presence {
 
 export type CollabMessage =
   | { type: "doc"; doc: unknown; from: string; ts: number }
+  // doc no schema CANÔNICO do CRM (Project3DDoc) — ponte site ⇄ CRM externo.
+  | { type: "syncdoc"; doc: unknown; from: string; ts: number }
   | { type: "chat"; message: ChatMessage }
   | { type: "presence"; presence: Presence }
   | { type: "leave"; id: string }
@@ -39,6 +41,7 @@ export interface CollabSession {
   id: string;
   publish: (m: CollabMessage) => void;
   publishDoc: (doc: unknown) => void;
+  publishSyncDoc: (doc: unknown) => void;
   publishChat: (message: ChatMessage) => void;
   publishPresence: (presence: Presence) => void;
   onMessage: (cb: (m: CollabMessage) => void) => () => void;
@@ -92,6 +95,7 @@ export function openCollaboration(projectId: string): CollabSession {
     id: myPeerId,
     publish,
     publishDoc: (doc) => publish({ type: "doc", doc, from: myPeerId, ts: Date.now() }),
+    publishSyncDoc: (doc) => publish({ type: "syncdoc", doc, from: myPeerId, ts: Date.now() }),
     publishChat: (message) => publish({ type: "chat", message }),
     publishPresence: (presence) => publish({ type: "presence", presence }),
     onMessage: (cb) => {

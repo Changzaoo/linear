@@ -1297,15 +1297,20 @@ function BrandMark() {
    Antes era um giro acumulativo infinito que levava a câmera para
    trás das paredes — a tela ficava coberta pela parede (tudo escuro). */
 function CameraRig({ progress }: { progress: Progress }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
 
   useFrame((state) => {
     const p = progress.get();
     const settle = clamp01((p - 0.88) / 0.12);
     const sway = Math.sin(state.clock.elapsedTime * 0.22) * 0.32 * settle;
     const angle = -0.55 + p * 0.7 + sway;
-    const radius = 9.4 - p * 2.6;
-    const height = 3.4 - p * 1.0;
+    // Telas retrato (mobile) têm FOV horizontal estreito — a loja larga
+    // ficaria cortada nas laterais. Afastamos a câmera na proporção em que a
+    // tela é mais alta que larga, mantendo o balcão e a parede enquadrados.
+    const aspect = size.width / Math.max(1, size.height);
+    const fit = aspect < 1.5 ? Math.min(1.5 / aspect, 1.7) : 1;
+    const radius = (9.4 - p * 2.6) * fit;
+    const height = (3.4 - p * 1.0) * (fit > 1 ? 1.06 : 1);
     camera.position.set(Math.sin(angle) * radius, height, Math.cos(angle) * radius);
     camera.lookAt(0, 1.1, 0);
   });

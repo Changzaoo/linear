@@ -20,7 +20,7 @@ function CountUp({ value, prefix, suffix }: { value: number; prefix: string; suf
   }, [inView, value]);
 
   return (
-    <span ref={ref} className="font-display text-5xl text-champagne md:text-6xl">
+    <span ref={ref} className="font-display text-4xl text-champagne sm:text-5xl md:text-6xl">
       {prefix}
       {display.toLocaleString("pt-BR")}
       {suffix}

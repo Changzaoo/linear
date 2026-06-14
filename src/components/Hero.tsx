@@ -2,7 +2,8 @@ import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import ScrollFurnitureAssembly from "./ScrollFurnitureAssembly";
 import Orcamento3DEntry from "../features/orcamento3d/Orcamento3DEntry";
-import { siteData, whatsappLink } from "../data/siteData";
+import { siteData } from "../data/siteData";
+import { openProposal } from "../lib/proposal";
 
 /**
  * Hero cinematográfico: seção alta (420vh) com canvas fixo.
@@ -77,15 +78,14 @@ export default function Hero() {
               transition={{ duration: 0.9, delay: 0.85 }}
               className="mt-10 flex flex-col gap-4 sm:flex-row"
             >
-              <a
-                href={whatsappLink()}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={openProposal}
                 className="btn-primary w-full sm:w-auto"
-                aria-label="Solicitar proposta pelo WhatsApp"
+                aria-label="Solicitar proposta"
               >
                 {hero.ctaPrimary}
-              </a>
+              </button>
               <a
                 href="#capacidades"
                 className="btn-secondary w-full sm:w-auto"

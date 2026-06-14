@@ -13,6 +13,7 @@ import PartnersSection from "./components/PartnersSection";
 import FinalCTA from "./components/FinalCTA";
 import Footer from "./components/Footer";
 import WhatsAppButton from "./components/WhatsAppButton";
+import ProposalModal from "./components/ProposalModal";
 import { useLenis } from "./lib/useLenis";
 import { openStudio, useStudioOpen } from "./features/orcamento3d/useOrcamento3DStore";
 
@@ -76,6 +77,10 @@ export default function App() {
           <WhatsAppButton />
         </>
       )}
+
+      {/* Modal "Solicitar proposta" — abre de qualquer CTA do site e
+          cai na fileira Lead do funil comercial do CRM. */}
+      <ProposalModal />
 
       {/* Estúdio 3D sobre qualquer rota — inclusive quando o arquiteto
           entra num projeto a partir do CRM. */}

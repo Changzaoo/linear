@@ -1,8 +1,9 @@
 import Reveal from "./Reveal";
 import { siteData, whatsappLink } from "../data/siteData";
+import { openProposal } from "../lib/proposal";
 
 export default function FinalCTA() {
-  const { finalCta, contact } = siteData;
+  const { finalCta } = siteData;
 
   return (
     <section id="contato" className="relative overflow-hidden py-32 md:py-44">
@@ -19,13 +20,14 @@ export default function FinalCTA() {
             {finalCta.subtitle}
           </p>
           <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <a
-              href={`mailto:${contact.email}?subject=${encodeURIComponent("Solicitação de proposta")}`}
+            <button
+              type="button"
+              onClick={openProposal}
               className="btn-primary w-full sm:w-auto"
-              aria-label="Solicitar proposta por e-mail"
+              aria-label="Solicitar proposta"
             >
               {finalCta.ctaPrimary}
-            </a>
+            </button>
             <a
               href={whatsappLink()}
               target="_blank"

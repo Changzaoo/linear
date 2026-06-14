@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { siteData, whatsappLink } from "../data/siteData";
+import { siteData } from "../data/siteData";
+import { openProposal } from "../lib/proposal";
 
 /** Menu fixo com fundo blur que se intensifica após o scroll. */
 export default function Header() {
@@ -43,15 +44,14 @@ export default function Header() {
               {item.label}
             </a>
           ))}
-          <a
-            href={whatsappLink()}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={openProposal}
             className="rounded-md border border-champagne/40 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-champagne transition-all hover:border-champagne hover:bg-champagne/5"
-            aria-label="Solicitar proposta pelo WhatsApp"
+            aria-label="Solicitar proposta"
           >
             Solicitar proposta
-          </a>
+          </button>
         </nav>
 
         {/* Botão mobile */}
@@ -93,16 +93,14 @@ export default function Header() {
                   {item.label}
                 </a>
               ))}
-              <a
-                href={whatsappLink()}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
+              <button
+                type="button"
+                onClick={() => { setOpen(false); openProposal(); }}
                 className="btn-primary mt-3"
-                aria-label="Solicitar proposta pelo WhatsApp"
+                aria-label="Solicitar proposta"
               >
                 Solicitar proposta
-              </a>
+              </button>
             </div>
           </motion.nav>
         )}

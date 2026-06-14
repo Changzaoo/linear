@@ -468,6 +468,10 @@ export const actions = {
     orc3dStore.setState({ attendanceId: id });
   },
 
+  setProjectId(id: string) {
+    orc3dStore.setState({ projectId: id });
+  },
+
   /** Aplica um doc vindo do colaborador remoto, sem reemitir. */
   applyRemoteDoc(doc: Doc) {
     applyingRemote = true;

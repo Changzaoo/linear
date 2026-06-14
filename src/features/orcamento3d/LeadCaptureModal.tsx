@@ -44,24 +44,33 @@ export default function LeadCaptureModal({
   onSubmit,
   onCancel,
 }: {
-  onSubmit: (form: LeadForm) => void;
+  onSubmit: (form: LeadForm) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [form, setForm] = useState<LeadForm>(EMPTY);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const set = (key: keyof LeadForm, value: string | boolean) =>
     setForm((cur) => ({ ...cur, [key]: value }));
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     if (!form.nome.trim()) return setError("Informe seu nome completo.");
     if (!validEmail(form.email)) return setError("Informe um e-mail válido.");
     if (!validPhone(form.whatsapp)) return setError("Informe um WhatsApp válido.");
     if (!form.cidade_estado.trim()) return setError("Informe sua cidade e estado.");
     if (!form.aceite) return setError("É necessário aceitar o contato da equipe.");
     setError("");
-    onSubmit(form);
+    setSubmitting(true);
+    try {
+      await onSubmit(form);
+    } catch (e: any) {
+      setError(e?.message || "Nao foi possivel registrar seu projeto agora.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -170,12 +179,13 @@ export default function LeadCaptureModal({
         {error && <p className="mt-3 text-sm text-amber-300">{error}</p>}
 
         <div className="mt-6 flex items-center justify-between gap-3">
-          <Btn variant="ghost" onClick={onCancel}>Voltar ao site</Btn>
+          <Btn variant="ghost" onClick={onCancel} disabled={submitting}>Voltar ao site</Btn>
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-lg bg-champagne/90 px-3.5 py-2 text-sm font-medium text-background transition hover:bg-champagne"
+            disabled={submitting}
+            className="inline-flex items-center justify-center rounded-lg bg-champagne/90 px-3.5 py-2 text-sm font-medium text-background transition hover:bg-champagne disabled:cursor-wait disabled:opacity-60"
           >
-            Montar meu ambiente em 3D
+            {submitting ? "Registrando..." : "Montar meu ambiente em 3D"}
           </button>
         </div>
       </motion.form>

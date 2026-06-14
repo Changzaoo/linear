@@ -25,8 +25,35 @@ import {
   useOrc3d,
 } from "./useOrcamento3DStore";
 import { create3DAttendance, initCrmSync, notifyAvailableArchitects } from "./crmBridge";
+import { callCrmArchitect, createCrmLead, saveCrmProject } from "./crmPublicApi";
 import { toast } from "./toast";
-import type { EnvironmentConfig, LeadForm } from "./types";
+import type { EnvironmentConfig, LeadForm, Project3D } from "./types";
+
+function previewProjectWithLead(form: LeadForm): Project3D {
+  const project = buildProject3D();
+  const now = new Date().toISOString();
+  return {
+    ...project,
+    name: `${form.tipo_projeto} - ${form.nome}`.slice(0, 80),
+    client: {
+      ...project.client,
+      name: form.nome.trim(),
+      email: form.email.trim(),
+      phone: form.whatsapp.trim(),
+      city: form.cidade_estado.trim(),
+      notes: form.descricao.trim(),
+      projectType: form.tipo_projeto,
+      desiredDeadline: form.prazo,
+      budgetRange: form.faixa_orcamento,
+      contactConsent: form.aceite,
+      source: "Orcamento 3D",
+      capturedAt: now,
+    },
+    status: "novo-lead-3d",
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 export default function Orcamento3DApp() {
   const phase = useOrc3d((s) => s.phase);
@@ -71,8 +98,10 @@ export default function Orcamento3DApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const onLeadSubmit = (form: LeadForm) => {
+  const onLeadSubmit = async (form: LeadForm) => {
+    const created = await createCrmLead(form, previewProjectWithLead(form));
     actions.captureLead(form);
+    actions.setProjectId(created.projetoId);
     const att = create3DAttendance(buildProject3D());
     actions.setAttendanceId(att.id);
     toast("Lead registrado. Agora monte o ambiente em 3D.", "success");
@@ -83,9 +112,15 @@ export default function Orcamento3DApp() {
     actions.setAssisted(assisted);
     actions.setStatus(assisted ? "aguardando-arquiteto" : "projeto-em-edicao");
     actions.enterEditor();
+    void saveCrmProject(buildProject3D()).catch(() => {
+      toast("O ambiente abriu, mas ainda nao foi sincronizado com o CRM.", "warn");
+    });
     if (assisted) {
       const { notified, attendance } = notifyAvailableArchitects(buildProject3D());
       actions.setAttendanceId(attendance.id);
+      void callCrmArchitect(buildProject3D()).catch(() => {
+        toast("Nao foi possivel avisar o Suporte 3D agora.", "warn");
+      });
       toast(
         notified
           ? "Estamos chamando um especialista para acompanhar seu projeto."

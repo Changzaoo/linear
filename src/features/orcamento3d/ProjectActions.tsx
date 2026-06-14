@@ -11,6 +11,14 @@ import {
   create3DAttendance,
   notifyAvailableArchitects,
 } from "./crmBridge";
+import {
+  callCrmArchitect,
+  createCrmLeadFromProject,
+  isCrmNotFound,
+  looksLikeCrmProjectId,
+  saveCrmProject,
+  sendCrmProjectForAnalysis,
+} from "./crmPublicApi";
 import { buildChecklist } from "./pricingEngine";
 import { exportHTML, exportJSON } from "./projectExport";
 import { toast } from "./toast";
@@ -31,6 +39,7 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
 
   const [dialog, setDialog] = useState<Dialog>(null);
   const [sheet, setSheet] = useState(false);
+  const [busy, setBusy] = useState<null | "save" | "quote" | "architect">(null);
 
   const persist = (status?: Parameters<typeof actions.setStatus>[0]) => {
     if (status) actions.setStatus(status);
@@ -39,31 +48,85 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
     return att;
   };
 
-  const save = () => {
-    actions.markSaved();
-    persist();
-    setDialog(null);
-    toast("Projeto salvo com sucesso.", "success");
+  const createMissingCrmProject = async () => {
+    const created = await createCrmLeadFromProject(buildProject3D());
+    actions.setProjectId(created.projetoId);
+    return buildProject3D();
   };
 
-  const requestQuote = () => {
+  const ensureCrmProject = async () => {
+    const project = buildProject3D();
+    if (looksLikeCrmProjectId(project.id)) return project;
+    return createMissingCrmProject();
+  };
+
+  const saveToCrm = async () => {
+    let project = await ensureCrmProject();
+    try {
+      await saveCrmProject(project);
+      return project;
+    } catch (e) {
+      if (!isCrmNotFound(e)) throw e;
+      project = await createMissingCrmProject();
+      await saveCrmProject(project);
+      return project;
+    }
+  };
+
+  const save = async () => {
+    setBusy("save");
+    actions.markSaved();
+    try {
+      const project = await saveToCrm();
+      const att = create3DAttendance(project);
+      actions.setAttendanceId(att.id);
+      setDialog(null);
+      toast("Projeto salvo com sucesso.", "success");
+    } catch {
+      persist();
+      toast("Projeto salvo neste navegador, mas nao sincronizou com o CRM.", "warn");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const requestQuote = async () => {
+    setBusy("quote");
     actions.markSentForAnalysis();
     persist("projeto-3d-enviado-analise");
-    if (assisted) notifyAvailableArchitects(buildProject3D());
+    try {
+      const project = await saveToCrm();
+      await sendCrmProjectForAnalysis(project);
+      if (assisted) notifyAvailableArchitects(project);
+    } catch {
+      toast("Nao foi possivel enviar para analise agora. Tente novamente.", "warn");
+      setBusy(null);
+      return;
+    }
+    setBusy(null);
     setDialog(null);
     toast("Recebemos seu projeto. Nossa equipe irá analisar cada detalhe.", "success");
   };
 
-  const callArchitect = () => {
+  const callArchitect = async () => {
+    setBusy("architect");
     actions.setAssisted(true);
-    const { notified, attendance } = notifyAvailableArchitects(buildProject3D());
-    actions.setAttendanceId(attendance.id);
-    toast(
-      notified
-        ? "Um especialista foi chamado para acompanhar seu projeto."
-        : "Nossa equipe está ocupada agora, mas seu projeto já foi registrado.",
-      notified ? "success" : "warn"
-    );
+    actions.setStatus("aguardando-arquiteto");
+    try {
+      const project = await saveToCrm();
+      const { attendance } = notifyAvailableArchitects(project);
+      actions.setAttendanceId(attendance.id);
+      await callCrmArchitect(project);
+      toast("Um especialista foi chamado para acompanhar seu projeto.", "success");
+      setBusy(null);
+      return;
+    } catch {
+      const { attendance } = notifyAvailableArchitects(buildProject3D());
+      actions.setAttendanceId(attendance.id);
+      toast("Nao foi possivel avisar o Suporte 3D agora. Tente novamente.", "warn");
+      setBusy(null);
+      return;
+    }
   };
 
   const capture = () => {
@@ -82,9 +145,11 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
       <Btn size={size} onClick={() => { capture(); after(); }} title="Capturar visão atual">⬡ Capturar</Btn>
       <Btn size={size} onClick={() => { setDialog("export"); after(); }}>Exportar</Btn>
       <Btn size={size} onClick={() => { if (confirm("Começar do zero? Os móveis atuais serão removidos.")) { actions.startFromScratch(); toast("Novo projeto iniciado.", "info"); } after(); }}>Começar do zero</Btn>
-      <Btn size={size} onClick={() => { callArchitect(); after(); }} active={assisted}>Chamar arquiteto</Btn>
-      <Btn size={size} variant="ghost" onClick={() => { setDialog("save"); after(); }}>Salvar</Btn>
-      <Btn size={size} variant="primary" onClick={() => { setDialog("quote"); after(); }}>Enviar para análise</Btn>
+      <Btn size={size} onClick={() => { void callArchitect(); after(); }} active={assisted} disabled={busy !== null}>
+        {busy === "architect" ? "Chamando..." : "Chamar arquiteto"}
+      </Btn>
+      <Btn size={size} variant="ghost" onClick={() => { setDialog("save"); after(); }} disabled={busy !== null}>Salvar</Btn>
+      <Btn size={size} variant="primary" onClick={() => { setDialog("quote"); after(); }} disabled={busy !== null}>Enviar para análise</Btn>
       <Btn size={size} onClick={closeStudio} title="Voltar para o site">✕ Sair</Btn>
     </>
   );
@@ -204,9 +269,13 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
                   <div className="flex items-center justify-between pt-1">
                     <Btn variant="ghost" onClick={() => setDialog(null)}>Cancelar</Btn>
                     {dialog === "save" ? (
-                      <Btn variant="primary" onClick={save}>Salvar projeto</Btn>
+                      <Btn variant="primary" onClick={() => void save()} disabled={busy !== null}>
+                        {busy === "save" ? "Salvando..." : "Salvar projeto"}
+                      </Btn>
                     ) : (
-                      <Btn variant="primary" disabled={!contactOk} onClick={requestQuote}>Enviar para análise</Btn>
+                      <Btn variant="primary" disabled={!contactOk || busy !== null} onClick={() => void requestQuote()}>
+                        {busy === "quote" ? "Enviando..." : "Enviar para análise"}
+                      </Btn>
                     )}
                   </div>
                   {dialog === "quote" && !contactOk && (

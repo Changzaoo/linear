@@ -20,6 +20,12 @@ npm run server
 Por padrão o front tenta `ws://<host-do-site>:8787`. Para apontar para outro host/IP,
 copie `.env.example` para `.env` e ajuste `VITE_COLLAB_WS_URL`.
 
+Para sincronizar os leads do Estudio 3D com o CRM em `/suporte-3d`, configure tambem:
+
+```bash
+VITE_CRM_API_BASE_URL=https://crm-marcenaria.vercel.app/api
+```
+
 Em teste com celular na mesma rede, suba o Vite escutando na rede local:
 
 ```bash
@@ -45,6 +51,7 @@ Depois configure no projeto da Vercel:
 
 ```bash
 VITE_COLLAB_WS_URL=wss://seu-relay-online
+VITE_CRM_API_BASE_URL=https://crm-marcenaria.vercel.app/api
 ```
 
 E faça um novo deploy do front.

@@ -62,10 +62,10 @@ export default function App() {
           <main>
             <Hero />
             <AuthoritySection />
+            <ExplodedCounter3D />
             <AudienceSection />
             <ProcessSection />
             <DifferentialsSection />
-            <ExplodedCounter3D />
             <ApplicationsSection />
             <TrustNumbers />
             <PortfolioSection />

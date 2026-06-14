@@ -26,6 +26,7 @@ export type CollabMessage =
   | { type: "doc"; doc: unknown; from: string; ts: number }
   // doc no schema CANÔNICO do CRM (Project3DDoc) — ponte site ⇄ CRM externo.
   | { type: "syncdoc"; doc: unknown; from: string; ts: number }
+  | { type: "syncdoc-request"; from: string; ts: number }
   | { type: "chat"; message: ChatMessage }
   | { type: "presence"; presence: Presence }
   | { type: "leave"; id: string }

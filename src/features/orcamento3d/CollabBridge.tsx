@@ -72,6 +72,10 @@ export default function CollabBridge() {
           dlog("REALTIME", "Doc remoto aplicado (CRM) de", m.from);
           break;
         }
+        case "syncdoc-request": {
+          if (m.from !== myPeerId) publishLocalDoc();
+          break;
+        }
         case "chat": {
           const cur = orc3dStore.getState().chat;
           if (!cur.some((c) => c.id === m.message.id)) actions.addChat(m.message);

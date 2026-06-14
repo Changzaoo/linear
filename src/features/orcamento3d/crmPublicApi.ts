@@ -1,4 +1,5 @@
 import type { LeadForm, Project3D } from "./types";
+import { priceOf } from "./pricingEngine";
 
 type CrmEnvironment = {
   largura: number;
@@ -26,6 +27,19 @@ type CrmFurniture = {
   material: string;
   color: string;
   locked: boolean;
+  /** preço estimado da peça (R$) — alimenta o resumo do funil */
+  preco: number;
+};
+
+/** Resumo financeiro/qualificação enviado junto ao doc — usado pelo
+    funil comercial do CRM (card do lead com valores e prioridade). */
+export type CrmEstimate = {
+  min: number;
+  max: number;
+  total: number;
+  complexity: string;
+  prazoDias: [number, number];
+  qtdMoveis: number;
 };
 
 export type CrmProjectDoc = {
@@ -33,6 +47,12 @@ export type CrmProjectDoc = {
   furniture: CrmFurniture[];
   notes: string;
   projectName: string;
+  /** estimativa de valores do projeto (opcional p/ compatibilidade) */
+  estimativa?: CrmEstimate;
+  /** classificação automática do lead (frio/morno/quente/projeto-grande) */
+  leadScore?: string;
+  /** status do projeto no momento do envio */
+  status?: string;
 };
 
 export type CrmLeadCreated = {
@@ -128,20 +148,14 @@ export function toCrmProjectDoc(project: Project3D): CrmProjectDoc {
     .filter(Boolean)
     .join("\n\n");
 
-  return {
-    projectName: project.name || projectType,
-    notes,
-    environment: {
-      largura: metersFromCm(env.width, 6),
-      comprimento: metersFromCm(env.depth, 5),
-      peDireito: metersFromCm(env.height, 2.7),
-      tipo: projectType,
-      formato: Math.abs(env.width - env.depth) < 20 ? "quadrado" : "retangular",
-      andares: Math.max(1, Math.round(env.floors || 1)),
-      portas: env.hasDoors ? 1 : 0,
-      janelas: env.hasWindows ? 1 : 0,
-    },
-    furniture: project.furniture.map((item) => ({
+  const furniture = project.furniture.map((item) => {
+    let preco = 0;
+    try {
+      preco = priceOf(item);
+    } catch {
+      preco = item.basePrice ?? 0;
+    }
+    return {
       uid: item.uid,
       catalogId: item.itemId,
       category: item.category,
@@ -156,7 +170,39 @@ export function toCrmProjectDoc(project: Project3D): CrmProjectDoc {
       material: item.config?.material || "mdf_amadeirado",
       color: colorFor(item.config?.material),
       locked: !!item.locked,
-    })),
+      preco,
+    };
+  });
+
+  const est = project.estimate;
+  const estimativa: CrmEstimate | undefined = est
+    ? {
+        min: est.min,
+        max: est.max,
+        total: furniture.reduce((sum, f) => sum + (f.preco || 0), 0),
+        complexity: est.complexity,
+        prazoDias: est.deadlineDays,
+        qtdMoveis: furniture.length,
+      }
+    : undefined;
+
+  return {
+    projectName: project.name || projectType,
+    notes,
+    status: project.status,
+    leadScore: project.leadScore,
+    estimativa,
+    environment: {
+      largura: metersFromCm(env.width, 6),
+      comprimento: metersFromCm(env.depth, 5),
+      peDireito: metersFromCm(env.height, 2.7),
+      tipo: projectType,
+      formato: Math.abs(env.width - env.depth) < 20 ? "quadrado" : "retangular",
+      andares: Math.max(1, Math.round(env.floors || 1)),
+      portas: env.hasDoors ? 1 : 0,
+      janelas: env.hasWindows ? 1 : 0,
+    },
+    furniture,
   };
 }
 

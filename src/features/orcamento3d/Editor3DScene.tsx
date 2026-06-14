@@ -228,27 +228,37 @@ function Room({
   );
 }
 
+/* Ponto de "espera" estável onde um participante sem posição própria
+   aparece em pé — separado por papel para cliente e arquiteto não se
+   sobreporem. Garante que os bonecos sempre apareçam um para o outro. */
+function spawnPos(role: "cliente" | "arquiteto", w: number, d: number) {
+  const x = role === "arquiteto" ? -Math.min(0.7, w * 0.18) : Math.min(0.7, w * 0.18);
+  return { x, z: d * 0.22, ry: Math.PI };
+}
+
 /* ---------- avatares dos colaboradores remotos ---------- */
-function PresenceAvatars({ floorHeight, isFloorVisible }: {
+function PresenceAvatars({ floorHeight, roomW, roomD, isFloorVisible }: {
   floorHeight: number;
+  roomW: number;
+  roomD: number;
   isFloorVisible: (floor: number) => boolean;
 }) {
   const peers = usePeers();
   return (
     <>
       {peers
-        .filter((p) => p.id !== myPeerId && p.cursor)
+        .filter((p) => p.id !== myPeerId)
         .filter((p) => isFloorVisible(p.cursor?.floor ?? 0))
         .map((p) => {
           const floor = p.cursor?.floor ?? 0;
+          const sp = spawnPos(p.role, roomW, roomD);
+          const x = p.cursor?.x ?? sp.x;
+          const z = p.cursor?.z ?? sp.z;
+          const ry = p.cursor?.ry ?? sp.ry;
           return (
-          <group
-            key={p.id}
-            position={[p.cursor!.x, floor * floorHeight, p.cursor!.z]}
-            rotation={[0, p.cursor?.ry ?? 0, 0]}
-          >
-            <Avatar role={p.role} name={p.name} moving={!!p.cursor?.moving} />
-          </group>
+            <group key={p.id} position={[x, floor * floorHeight, z]} rotation={[0, ry, 0]}>
+              <Avatar role={p.role} name={p.name} moving={!!p.cursor?.moving} />
+            </group>
           );
         })}
     </>
@@ -363,6 +373,12 @@ function CameraRig({
       const z = mode === "terceira" ? avatarPos.current.z : camera.position.z;
       const ry = mode === "terceira" ? avatarPos.current.ry : camera.rotation.y;
       publishCursor(+x.toFixed(2), +z.toFixed(2), activeFloor, +ry.toFixed(2), isMoving);
+    } else if ((mode === "isometrico" || mode === "topo") && state.clock.elapsedTime - lastPresence.current > 0.6) {
+      // sem avatar controlável nesses modos: publica uma posição "em pé"
+      // estável (por papel) para o outro participante sempre ver o boneco.
+      lastPresence.current = state.clock.elapsedTime;
+      const sp = spawnPos(role, w, d);
+      publishCursor(sp.x, sp.z, activeFloor, sp.ry, false);
     }
     setMoving((prev) => (prev === isMoving ? prev : isMoving));
   });
@@ -475,7 +491,6 @@ function SceneContents({ mobile }: { mobile: boolean }) {
   };
 
   const onFloorMove = (e: ThreeEvent<PointerEvent>) => {
-    publishCursor(e.point.x, e.point.z, activeFloor); // presença em tempo real
     if (!draggingUid) return;
     const f = furniture.find((x) => x.uid === draggingUid);
     if (!f) return;
@@ -527,7 +542,12 @@ function SceneContents({ mobile }: { mobile: boolean }) {
         onFloorMove={onFloorMove}
         onFloorUp={onFloorUp}
       />
-      <PresenceAvatars floorHeight={floorHeight} isFloorVisible={isFloorVisible} />
+      <PresenceAvatars
+        floorHeight={floorHeight}
+        roomW={env.width / 100}
+        roomD={env.depth / 100}
+        isFloorVisible={isFloorVisible}
+      />
 
       {furniture.filter((f) => isFloorVisible(f.floor ?? 0)).map((f) => (
         <FurnitureMesh

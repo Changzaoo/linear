@@ -52,22 +52,25 @@ export default function Orcamento3DEntry({ progress }: Props) {
               <button
                 type="button"
                 onClick={openStudio}
-                className="rounded-full border border-champagne/40 bg-surface/85 px-5 py-3 text-sm font-semibold tracking-wide text-champagne shadow-card backdrop-blur-md"
+                className="rounded-full border border-champagne/50 bg-surface/90 px-8 py-4 text-lg font-semibold tracking-wide text-champagne shadow-card backdrop-blur-md"
               >
                 Iniciar orçamento 3D
               </button>
             ) : (
-              <motion.p
-                animate={{ opacity: [0.55, 1, 0.55] }}
+              <motion.button
+                type="button"
+                onClick={openStudio}
+                animate={{ opacity: [0.78, 1, 0.78] }}
                 transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
-                className="mt-5 text-sm text-muted"
+                className="mt-4 inline-flex items-center gap-2 rounded-full border border-champagne/40 bg-surface/80 px-6 py-3.5 text-lg font-medium text-text shadow-card backdrop-blur-md transition hover:border-champagne/70 hover:bg-surface/90"
+                aria-label="Pressione ENTER ou clique para iniciar seu orçamento 3D"
               >
-                Pressione{" "}
-                <kbd className="mx-1 rounded-md border border-champagne/40 bg-surface px-2.5 py-1 font-sans text-xs font-semibold tracking-wide text-champagne">
+                Pressione
+                <kbd className="rounded-lg border border-champagne/60 bg-surface px-3.5 py-1.5 font-sans text-base font-bold tracking-wider text-champagne">
                   ENTER
-                </kbd>{" "}
+                </kbd>
                 para iniciar seu orçamento 3D
-              </motion.p>
+              </motion.button>
             )}
           </div>
         </motion.div>

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, PointerLockControls, Grid } from "@react-three/drei";
 import * as THREE from "three";
 import FurnitureMesh from "./FurnitureMesh";
+import Avatar from "./Avatar";
 import { fpInput } from "./fpInput";
 import {
   actions,
@@ -10,7 +11,7 @@ import {
 } from "./useOrcamento3DStore";
 import { publishCursor, usePeers } from "./presence";
 import { myPeerId } from "./collaboration";
-import type { EnvironmentConfig, PlacedFurniture, ViewMode } from "./types";
+import type { EnvironmentConfig, FloorVisibility, PlacedFurniture, ViewMode, WallMode } from "./types";
 
 const FLOOR_COLORS: Record<EnvironmentConfig["floorType"], string> = {
   porcelanato: "#c9c2b5",
@@ -107,9 +108,27 @@ function Mezzanine({ w, d, y }: { w: number; d: number; y: number }) {
   );
 }
 
+function floorVisible(floor: number, activeFloor: number, mode: FloorVisibility) {
+  if (mode === "all") return true;
+  if (mode === "current") return floor === activeFloor;
+  return floor <= activeFloor;
+}
+
 /* ---------- ambiente (pisos, paredes, mezanino, escada) ---------- */
-function Room({ env, onFloorMove, onFloorUp }: {
+function Room({
+  env,
+  activeFloor,
+  wallMode,
+  floorVisibility,
+  gridVisible,
+  onFloorMove,
+  onFloorUp,
+}: {
   env: EnvironmentConfig;
+  activeFloor: number;
+  wallMode: WallMode;
+  floorVisibility: FloorVisibility;
+  gridVisible: boolean;
   onFloorMove: (e: ThreeEvent<PointerEvent>) => void;
   onFloorUp: () => void;
 }) {
@@ -117,104 +136,200 @@ function Room({ env, onFloorMove, onFloorUp }: {
   const d = env.depth / 100;
   const h = env.height / 100;
   const floors = Math.max(1, env.floors);
-  const totalH = h * floors;
-  const wallMat = { color: env.wallColor, roughness: 0.95, metalness: 0 };
+  const wallH = wallMode === "down" ? 0 : wallMode === "cut" ? Math.min(1.15, h) : h;
+  const showWalls = wallH > 0;
+  const wallMat = { color: env.wallColor, roughness: 0.95, metalness: 0, side: THREE.DoubleSide };
 
   return (
     <group>
-      {/* piso térreo (recebe o arraste dos móveis) */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0, 0]}
-        receiveShadow
-        onPointerMove={onFloorMove}
-        onPointerUp={onFloorUp}
-      >
-        <planeGeometry args={[w, d]} />
-        <meshStandardMaterial color={FLOOR_COLORS[env.floorType]} roughness={0.85} />
-      </mesh>
+      {Array.from({ length: floors }).map((_, floor) => {
+        if (!floorVisible(floor, activeFloor, floorVisibility)) return null;
+        const baseY = floor * h;
+        const active = floor === activeFloor;
+        return (
+          <group key={floor}>
+            <mesh
+              rotation={[-Math.PI / 2, 0, 0]}
+              position={[0, baseY, 0]}
+              receiveShadow
+              onPointerMove={active ? onFloorMove : undefined}
+              onPointerUp={active ? onFloorUp : undefined}
+            >
+              <planeGeometry args={[w, d]} />
+              <meshStandardMaterial
+                color={floor === 0 ? FLOOR_COLORS[env.floorType] : "#1f1b16"}
+                roughness={0.85}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
 
-      {/* lajes dos andares superiores */}
-      {Array.from({ length: floors - 1 }).map((_, i) => (
-        <mesh key={i} position={[0, h * (i + 1), 0]} receiveShadow castShadow>
-          <boxGeometry args={[w, 0.12, d]} />
-          <meshStandardMaterial color={FLOOR_COLORS[env.floorType]} roughness={0.85} />
-        </mesh>
-      ))}
+            {floor > 0 && (
+              <mesh position={[0, baseY - 0.04, 0]} receiveShadow castShadow>
+                <boxGeometry args={[w, 0.08, d]} />
+                <meshStandardMaterial color="#1b1712" roughness={0.85} />
+              </mesh>
+            )}
 
-      {/* paredes (altura total do prédio) */}
-      <mesh position={[0, totalH / 2, -d / 2]} receiveShadow>
-        <boxGeometry args={[w, totalH, 0.06]} />
-        <meshStandardMaterial {...wallMat} />
-      </mesh>
-      <mesh position={[-w / 2, totalH / 2, 0]} receiveShadow>
-        <boxGeometry args={[0.06, totalH, d]} />
-        <meshStandardMaterial {...wallMat} />
-      </mesh>
-      <mesh position={[w / 2, totalH / 2, 0]} receiveShadow>
-        <boxGeometry args={[0.06, totalH, d]} />
-        <meshStandardMaterial {...wallMat} />
-      </mesh>
-      {!env.hasStorefront && (
-        <mesh position={[0, totalH / 2, d / 2]} receiveShadow>
-          <boxGeometry args={[w, totalH, 0.06]} />
-          <meshStandardMaterial {...wallMat} transparent opacity={0.25} />
-        </mesh>
-      )}
+            {gridVisible && (
+              <Grid
+                args={[w, d]}
+                cellSize={0.5}
+                cellThickness={0.45}
+                cellColor={active ? "#4a3b2a" : "#2d261d"}
+                sectionSize={1}
+                sectionThickness={0.85}
+                sectionColor={active ? "#D8B978" : "#4a3c2b"}
+                fadeDistance={Math.max(w, d) * 2.2}
+                fadeStrength={1}
+                position={[0, baseY + 0.012, 0]}
+                infiniteGrid={false}
+              />
+            )}
 
-      {env.hasMezzanine && <Mezzanine w={w} d={d} y={h * 0.6} />}
-      {env.hasStairs && <Stairs w={w} d={d} fromY={0} toY={env.hasMezzanine ? h * 0.6 : h} />}
+            {showWalls && (
+              <group position={[0, baseY, 0]}>
+                <mesh position={[0, wallH / 2, -d / 2]} receiveShadow>
+                  <boxGeometry args={[w, wallH, 0.06]} />
+                  <meshStandardMaterial {...wallMat} />
+                </mesh>
+                <mesh position={[-w / 2, wallH / 2, 0]} receiveShadow>
+                  <boxGeometry args={[0.06, wallH, d]} />
+                  <meshStandardMaterial {...wallMat} />
+                </mesh>
+                <mesh position={[w / 2, wallH / 2, 0]} receiveShadow>
+                  <boxGeometry args={[0.06, wallH, d]} />
+                  <meshStandardMaterial {...wallMat} />
+                </mesh>
+                {!env.hasStorefront && (
+                  <mesh position={[0, wallH / 2, d / 2]} receiveShadow>
+                    <boxGeometry args={[w, wallH, 0.06]} />
+                    <meshStandardMaterial {...wallMat} transparent opacity={wallMode === "cut" ? 0.35 : 0.65} />
+                  </mesh>
+                )}
+              </group>
+            )}
+
+            <mesh position={[0, baseY + 0.025, 0]}>
+              <boxGeometry args={[w, 0.02, d]} />
+              <meshBasicMaterial color={active ? "#D8B978" : "#5b513f"} wireframe transparent opacity={active ? 0.7 : 0.28} />
+            </mesh>
+          </group>
+        );
+      })}
+
+      {env.hasMezzanine && floorVisible(0, activeFloor, floorVisibility) && <Mezzanine w={w} d={d} y={h * 0.6} />}
+      {env.hasStairs &&
+        Array.from({ length: Math.max(0, floors - 1) }).map((_, floor) =>
+          floorVisible(floor, activeFloor, floorVisibility) ? (
+            <Stairs key={floor} w={w} d={d} fromY={floor * h} toY={(floor + 1) * h} />
+          ) : null
+        )}
     </group>
   );
 }
 
-/* ---------- cursores dos colaboradores remotos ---------- */
-function PresenceCursors() {
+/* ---------- avatares dos colaboradores remotos ---------- */
+function PresenceAvatars({ floorHeight, isFloorVisible }: {
+  floorHeight: number;
+  isFloorVisible: (floor: number) => boolean;
+}) {
   const peers = usePeers();
   return (
     <>
       {peers
         .filter((p) => p.id !== myPeerId && p.cursor)
-        .map((p) => (
-          <group key={p.id} position={[p.cursor!.x, 0.02, p.cursor!.z]}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[0.16, 0.22, 28]} />
-              <meshBasicMaterial color={p.role === "arquiteto" ? "#7fd1ff" : "#D8B978"} transparent opacity={0.85} />
-            </mesh>
-            <mesh position={[0, 0.34, 0]}>
-              <coneGeometry args={[0.08, 0.22, 12]} />
-              <meshBasicMaterial color={p.role === "arquiteto" ? "#7fd1ff" : "#D8B978"} />
-            </mesh>
+        .filter((p) => isFloorVisible(p.cursor?.floor ?? 0))
+        .map((p) => {
+          const floor = p.cursor?.floor ?? 0;
+          return (
+          <group
+            key={p.id}
+            position={[p.cursor!.x, floor * floorHeight, p.cursor!.z]}
+            rotation={[0, p.cursor?.ry ?? 0, 0]}
+          >
+            <Avatar role={p.role} name={p.name} moving={!!p.cursor?.moving} />
           </group>
-        ))}
+          );
+        })}
     </>
   );
 }
 
 /* ---------- câmera por modo ---------- */
-function CameraRig({ mode, env, mobile }: { mode: ViewMode; env: EnvironmentConfig; mobile: boolean }) {
+function CameraRig({
+  mode,
+  env,
+  mobile,
+  activeFloor,
+  role,
+  name,
+}: {
+  mode: ViewMode;
+  env: EnvironmentConfig;
+  mobile: boolean;
+  activeFloor: number;
+  role: "cliente" | "arquiteto";
+  name: string;
+}) {
   const { camera } = useThree();
   const w = env.width / 100;
   const d = env.depth / 100;
+  const h = env.height / 100;
+  const floorY = activeFloor * h;
+  const avatarRef = useRef<THREE.Group>(null);
+  const avatarPos = useRef({ x: 0, z: d * 0.25, ry: Math.PI });
+  const lastPresence = useRef(0);
+  const [moving, setMoving] = useState(false);
 
   useEffect(() => {
     if (mode === "isometrico") {
       const r = Math.max(w, d);
-      camera.position.set(r * 0.85, r * 0.95, r * 0.85);
-      camera.lookAt(0, 0, 0);
-    } else if (mode === "terceira") {
+      camera.up.set(0, 1, 0);
+      camera.position.set(r * 0.85, floorY + r * 0.95, r * 0.85);
+      camera.lookAt(0, floorY + 0.4, 0);
+    } else if (mode === "topo") {
       const r = Math.max(w, d);
-      camera.position.set(0, r * 0.5, r * 0.95);
-      camera.lookAt(0, 0.8, 0);
+      camera.up.set(0, 0, -1);
+      camera.position.set(0, floorY + r * 1.35, 0.001);
+      camera.lookAt(0, floorY, 0);
+    } else if (mode === "terceira") {
+      camera.up.set(0, 1, 0);
+      camera.position.set(0, floorY + 2.4, d * 0.45);
+      camera.lookAt(0, floorY + 1, 0);
     } else {
-      camera.position.set(0, 1.6, d * 0.35);
-      camera.lookAt(0, 1.6, -d / 2);
+      camera.up.set(0, 1, 0);
+      camera.position.set(0, floorY + 1.6, d * 0.35);
+      camera.lookAt(0, floorY + 1.6, -d / 2);
     }
-  }, [mode, w, d, camera]);
+  }, [mode, w, d, floorY, camera]);
 
   // movimento primeira pessoa
-  useFrame((_, dt) => {
-    if (mode !== "primeira") return;
+  useFrame((state, dt) => {
+    let isMoving = false;
+    if (mode === "terceira") {
+      const speed = (fpInput.sprint ? 3.2 : 1.8) * dt;
+      const turn = 2.35 * dt;
+      avatarPos.current.ry -= fpInput.strafe * turn;
+      if (fpInput.forward) {
+        avatarPos.current.x += Math.sin(avatarPos.current.ry) * fpInput.forward * speed;
+        avatarPos.current.z += Math.cos(avatarPos.current.ry) * fpInput.forward * speed;
+        isMoving = true;
+      }
+      const halfW = w / 2 - 0.3;
+      const halfD = d / 2 - 0.3;
+      avatarPos.current.x = Math.max(-halfW, Math.min(halfW, avatarPos.current.x));
+      avatarPos.current.z = Math.max(-halfD, Math.min(halfD, avatarPos.current.z));
+      avatarRef.current?.position.set(avatarPos.current.x, floorY, avatarPos.current.z);
+      if (avatarRef.current) avatarRef.current.rotation.y = avatarPos.current.ry;
+
+      const camTarget = new THREE.Vector3(
+        avatarPos.current.x - Math.sin(avatarPos.current.ry) * 3.3,
+        floorY + 2.35,
+        avatarPos.current.z - Math.cos(avatarPos.current.ry) * 3.3
+      );
+      camera.position.lerp(camTarget, 0.12);
+      camera.lookAt(avatarPos.current.x, floorY + 1.1, avatarPos.current.z);
+    } else if (mode === "primeira") {
     if (mobile && (fpInput.lookDX || fpInput.lookDY)) {
       const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
       e.y -= fpInput.lookDX * 0.005;
@@ -233,15 +348,34 @@ function CameraRig({ mode, env, mobile }: { mode: ViewMode; env: EnvironmentConf
       const right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
       camera.position.addScaledVector(dir, fpInput.forward * speed);
       camera.position.addScaledVector(right, fpInput.strafe * speed);
+      isMoving = true;
     }
-    camera.position.y = 1.6;
+    camera.position.y = floorY + 1.6;
     const halfW = w / 2 - 0.3;
     const halfD = d / 2 - 0.3;
     camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
     camera.position.z = Math.max(-halfD, Math.min(halfD, camera.position.z));
+    }
+
+    if ((mode === "primeira" || mode === "terceira") && state.clock.elapsedTime - lastPresence.current > 0.12) {
+      lastPresence.current = state.clock.elapsedTime;
+      const x = mode === "terceira" ? avatarPos.current.x : camera.position.x;
+      const z = mode === "terceira" ? avatarPos.current.z : camera.position.z;
+      const ry = mode === "terceira" ? avatarPos.current.ry : camera.rotation.y;
+      publishCursor(+x.toFixed(2), +z.toFixed(2), activeFloor, +ry.toFixed(2), isMoving);
+    }
+    setMoving((prev) => (prev === isMoving ? prev : isMoving));
   });
 
-  return null;
+  return (
+    <>
+      {mode === "terceira" && (
+        <group ref={avatarRef} position={[avatarPos.current.x, floorY, avatarPos.current.z]} rotation={[0, avatarPos.current.ry, 0]}>
+          <Avatar role={role} name={name} moving={moving} />
+        </group>
+      )}
+    </>
+  );
 }
 
 /* ---------- teclado primeira pessoa (desktop) ---------- */
@@ -298,14 +432,25 @@ function SceneContents({ mobile }: { mobile: boolean }) {
   const furniture = useOrc3d((s) => s.doc.furniture);
   const selectedUid = useOrc3d((s) => s.selectedUid);
   const viewMode = useOrc3d((s) => s.viewMode);
+  const activeFloor = useOrc3d((s) => s.activeFloor);
+  const wallMode = useOrc3d((s) => s.wallMode);
+  const floorVisibility = useOrc3d((s) => s.floorVisibility);
+  const role = useOrc3d((s) => s.role);
+  const clientName = useOrc3d((s) => s.doc.client.name);
   const snap = useOrc3d((s) => s.snap);
   const gridVisible = useOrc3d((s) => s.gridVisible);
 
   const orbitRef = useRef<any>(null);
   const [draggingUid, setDraggingUid] = useState<string | null>(null);
   const dragBaseY = useRef(0);
+  const floorHeight = env.height / 100;
+  const activeFloorY = activeFloor * floorHeight;
+  const isFloorVisible = useMemo(
+    () => (floor: number) => floorVisible(floor, activeFloor, floorVisibility),
+    [activeFloor, floorVisibility]
+  );
 
-  useFpKeyboard(viewMode === "primeira" && !mobile);
+  useFpKeyboard((viewMode === "primeira" || viewMode === "terceira") && !mobile);
 
   // solta o arraste mesmo se o ponteiro sair da cena
   useEffect(() => {
@@ -322,7 +467,7 @@ function SceneContents({ mobile }: { mobile: boolean }) {
   const onFurnitureDown = (f: PlacedFurniture) => (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     actions.select(f.uid);
-    if (viewMode === "primeira" || f.locked) return;
+    if (viewMode === "primeira" || f.locked || (f.floor ?? 0) !== activeFloor) return;
     dragBaseY.current = f.position[1];
     actions.beginDrag();
     setDraggingUid(f.uid);
@@ -330,7 +475,7 @@ function SceneContents({ mobile }: { mobile: boolean }) {
   };
 
   const onFloorMove = (e: ThreeEvent<PointerEvent>) => {
-    publishCursor(e.point.x, e.point.z); // presença em tempo real
+    publishCursor(e.point.x, e.point.z, activeFloor); // presença em tempo real
     if (!draggingUid) return;
     const f = furniture.find((x) => x.uid === draggingUid);
     if (!f) return;
@@ -339,7 +484,7 @@ function SceneContents({ mobile }: { mobile: boolean }) {
       e.point.z,
       f,
       env,
-      furniture.filter((o) => o.uid !== draggingUid),
+      furniture.filter((o) => o.uid !== draggingUid && (o.floor ?? 0) === (f.floor ?? 0)),
       snap
     );
     actions.moveTo(draggingUid, [sx, dragBaseY.current, sz]);
@@ -370,47 +515,43 @@ function SceneContents({ mobile }: { mobile: boolean }) {
         shadow-camera-bottom={-12}
         shadow-bias={-0.0004}
       />
-      <CameraRig mode={viewMode} env={env} mobile={mobile} />
+      <CameraRig mode={viewMode} env={env} mobile={mobile} activeFloor={activeFloor} role={role} name={clientName || "Cliente"} />
       <Capturer />
 
-      <Room env={env} onFloorMove={onFloorMove} onFloorUp={onFloorUp} />
-      <PresenceCursors />
+      <Room
+        env={env}
+        activeFloor={activeFloor}
+        wallMode={wallMode}
+        floorVisibility={floorVisibility}
+        gridVisible={gridVisible}
+        onFloorMove={onFloorMove}
+        onFloorUp={onFloorUp}
+      />
+      <PresenceAvatars floorHeight={floorHeight} isFloorVisible={isFloorVisible} />
 
-      {gridVisible && (
-        <Grid
-          args={[env.width / 100, env.depth / 100]}
-          cellSize={0.5}
-          cellThickness={0.6}
-          cellColor="#3a2f22"
-          sectionSize={1}
-          sectionThickness={1}
-          sectionColor="#5a4032"
-          fadeDistance={Math.max(env.width, env.depth) / 50}
-          position={[0, 0.005, 0]}
-          infiniteGrid={false}
-        />
-      )}
-
-      {furniture.map((f) => (
+      {furniture.filter((f) => isFloorVisible(f.floor ?? 0)).map((f) => (
         <FurnitureMesh
           key={f.uid}
           f={f}
           selected={f.uid === selectedUid}
+          floorY={(f.floor ?? 0) * floorHeight}
           onPointerDown={onFurnitureDown(f)}
         />
       ))}
 
       {/* controles por modo */}
-      {(viewMode === "isometrico" || viewMode === "terceira") && (
+      {(viewMode === "isometrico" || viewMode === "topo") && (
         <OrbitControls
           ref={orbitRef}
           makeDefault
           enableDamping
           dampingFactor={0.1}
+          enableRotate={viewMode === "isometrico"}
           minDistance={1.5}
           maxDistance={Math.max(env.width, env.depth) / 40}
-          maxPolarAngle={Math.PI / 2.05}
-          target={[0, 0.4, 0]}
+          minPolarAngle={viewMode === "topo" ? 0 : 0.2}
+          maxPolarAngle={viewMode === "topo" ? 0.01 : Math.PI / 2.05}
+          target={[0, activeFloorY + 0.4, 0]}
         />
       )}
       {viewMode === "primeira" && !mobile && <PointerLockControls makeDefault />}

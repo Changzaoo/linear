@@ -14,7 +14,7 @@ import FinalCTA from "./components/FinalCTA";
 import Footer from "./components/Footer";
 import WhatsAppButton from "./components/WhatsAppButton";
 import { useLenis } from "./lib/useLenis";
-import { useStudioOpen } from "./features/orcamento3d/useOrcamento3DStore";
+import { openStudio, useStudioOpen } from "./features/orcamento3d/useOrcamento3DStore";
 
 // Carregados sob demanda — não pesam o bundle inicial do site.
 const Orcamento3DApp = lazy(() => import("./features/orcamento3d/Orcamento3DApp"));
@@ -45,6 +45,10 @@ export default function App() {
 
   // desliga o scroll suavizado dentro do estúdio/CRM (painéis com scroll próprio)
   useLenis(!studioOpen && !isCrm);
+
+  useEffect(() => {
+    if (hash.startsWith("#/orcamento-3d") || hash.startsWith("#orcamento-3d")) openStudio();
+  }, [hash]);
 
   return (
     <>

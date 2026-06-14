@@ -28,9 +28,10 @@ export default function HelpOverlay() {
       title: "Modos de visão",
       items: [
         "1ª Pessoa — ande dentro do ambiente",
-        "3ª Pessoa — orbite ao redor do espaço",
-        "Isométrico — vista de cima para organizar (ideal no celular)",
-        !mobile ? "Atalhos: teclas 1, 2 e 3" : "Troque pelos botões no topo",
+        "3ª Pessoa — controle um avatar no espaço",
+        "Isométrico — vista inclinada para organizar",
+        "Vista superior — planta baixa interativa",
+        !mobile ? "Atalhos: teclas 1, 2, 3 e 4" : "Troque pelos botões no topo",
       ],
     },
     mode === "primeira"
@@ -40,13 +41,21 @@ export default function HelpOverlay() {
             ? ["Joystick à esquerda para mover", "Arraste no lado direito para olhar", "Botão Correr para acelerar"]
             : ["W A S D para mover", "Mouse para olhar (clique para travar)", "Shift para correr", "ESC libera o mouse"],
         }
+      : mode === "terceira"
+      ? {
+          title: "Andar (3ª pessoa)",
+          items: mobile
+            ? ["Joystick à esquerda para andar e girar", "Botão Correr para acelerar", "Use o seletor de andares para trocar de pavimento"]
+            : ["W/S andam, A/D giram", "Shift para correr", "Use o seletor de andares para trocar de pavimento"],
+        }
       : {
-          title: mode === "isometrico" ? "Organizar (isométrico)" : "Visualizar (3ª pessoa)",
+          title: mode === "topo" ? "Vista superior" : "Organizar (isométrico)",
           items: [
             mobile ? "Toque e arraste um móvel para mover" : "Clique e arraste um móvel para mover",
             "Toque/clique seleciona; o painel mostra a edição",
             "Snap encaixa em paredes, cantos e outros móveis",
-            mobile ? "Pinça para zoom, um dedo para girar" : "Scroll para zoom, arraste o fundo para girar",
+            "Controle andares, paredes e visibilidade no painel da esquerda",
+            mobile ? "Pinça para zoom" : "Scroll para zoom, arraste o fundo para navegar",
           ],
         },
     {

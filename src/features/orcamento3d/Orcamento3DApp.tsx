@@ -3,11 +3,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { supportsWebGL, isMobileViewport } from "../../lib/webgl";
 import Editor3DScene from "./Editor3DScene";
 import EnvironmentSetup from "./EnvironmentSetup";
+import LeadCaptureModal from "./LeadCaptureModal";
 import FurnitureLibrary from "./FurnitureLibrary";
 import FurnitureEditor from "./FurnitureEditor";
 import EstimatePanel from "./EstimatePanel";
 import ProjectActions from "./ProjectActions";
 import ViewModeSwitcher from "./ViewModeSwitcher";
+import FloorControls from "./FloorControls";
 import MobileControls from "./MobileControls";
 import ChatPanel from "./ChatPanel";
 import ToastHost from "./ToastHost";
@@ -22,15 +24,16 @@ import {
   closeStudio,
   useOrc3d,
 } from "./useOrcamento3DStore";
-import { initCrmSync, notifyAvailableArchitects } from "./crmBridge";
+import { create3DAttendance, initCrmSync, notifyAvailableArchitects } from "./crmBridge";
 import { toast } from "./toast";
-import type { EnvironmentConfig } from "./types";
+import type { EnvironmentConfig, LeadForm } from "./types";
 
 export default function Orcamento3DApp() {
   const phase = useOrc3d((s) => s.phase);
   const selectedUid = useOrc3d((s) => s.selectedUid);
   const role = useOrc3d((s) => s.role);
   const warning = useOrc3d((s) => s.warning);
+  const leadCaptured = useOrc3d((s) => s.leadCaptured);
   const mobile = isMobileViewport();
   const webgl = supportsWebGL();
 
@@ -55,6 +58,7 @@ export default function Orcamento3DApp() {
       if (e.key === "1") actions.setViewMode("primeira");
       else if (e.key === "2") actions.setViewMode("terceira");
       else if (e.key === "3") actions.setViewMode("isometrico");
+      else if (e.key === "4") actions.setViewMode("topo");
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         e.shiftKey ? actions.redo() : actions.undo();
@@ -67,9 +71,17 @@ export default function Orcamento3DApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const onLeadSubmit = (form: LeadForm) => {
+    actions.captureLead(form);
+    const att = create3DAttendance(buildProject3D());
+    actions.setAttendanceId(att.id);
+    toast("Lead registrado. Agora monte o ambiente em 3D.", "success");
+  };
+
   const onCreate = (env: EnvironmentConfig, assisted: boolean) => {
     actions.setEnvironment(env);
     actions.setAssisted(assisted);
+    actions.setStatus(assisted ? "aguardando-arquiteto" : "projeto-em-edicao");
     actions.enterEditor();
     if (assisted) {
       const { notified, attendance } = notifyAvailableArchitects(buildProject3D());
@@ -80,6 +92,9 @@ export default function Orcamento3DApp() {
           : "Nossa equipe está ocupada agora, mas seu projeto já foi registrado.",
         notified ? "success" : "warn"
       );
+    } else {
+      const att = create3DAttendance(buildProject3D());
+      actions.setAttendanceId(att.id);
     }
   };
 
@@ -135,7 +150,9 @@ export default function Orcamento3DApp() {
         )}
       </AnimatePresence>
 
-      {phase === "setup" ? (
+      {phase === "setup" && !leadCaptured ? (
+        <LeadCaptureModal onSubmit={onLeadSubmit} onCancel={closeStudio} />
+      ) : phase === "setup" ? (
         <EnvironmentSetup onCreate={onCreate} onCancel={closeStudio} />
       ) : (
         <div className="flex h-full w-full flex-col">
@@ -170,9 +187,12 @@ export default function Orcamento3DApp() {
             {/* canvas */}
             <div className="relative flex-1">
               <Editor3DScene mobile={mobile} />
+              <div className="absolute left-3 top-3 z-10">
+                <FloorControls />
+              </div>
 
               {warning && (
-                <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-lg border border-amber-400/40 bg-[rgba(40,30,10,0.85)] px-4 py-2 text-xs text-amber-200 backdrop-blur-md">
+                <div className="pointer-events-none absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg border border-amber-400/40 bg-[rgba(40,30,10,0.85)] px-4 py-2 text-xs text-amber-200 backdrop-blur-md">
                   {warning}
                 </div>
               )}

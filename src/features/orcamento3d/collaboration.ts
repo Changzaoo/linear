@@ -18,7 +18,7 @@ export interface Presence {
   id: string;
   role: Role;
   name: string;
-  cursor?: { x: number; z: number };
+  cursor?: { x: number; z: number; floor?: number; ry?: number; moving?: boolean };
   at: number;
 }
 

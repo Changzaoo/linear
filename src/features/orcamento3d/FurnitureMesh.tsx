@@ -385,10 +385,11 @@ function CategoryModel({ f, s, stone }: { f: PlacedFurniture; s: SurfaceProps; s
 interface Props {
   f: PlacedFurniture;
   selected: boolean;
+  floorY: number;
   onPointerDown: (e: any) => void;
 }
 
-export default function FurnitureMesh({ f, selected, onPointerDown }: Props) {
+export default function FurnitureMesh({ f, selected, floorY, onPointerDown }: Props) {
   const w = f.width * M;
   const h = f.height * M;
   const d = f.depth * M;
@@ -399,7 +400,11 @@ export default function FurnitureMesh({ f, selected, onPointerDown }: Props) {
   const stone = useMemo(() => stoneTexture(), []);
 
   return (
-    <group position={f.position} rotation={[0, f.rotationY, 0]} onPointerDown={onPointerDown}>
+    <group
+      position={[f.position[0], floorY + f.position[1], f.position[2]]}
+      rotation={[0, f.rotationY, 0]}
+      onPointerDown={onPointerDown}
+    >
       <CategoryModel f={f} s={s} stone={stone} />
 
       {/* contorno de seleção */}

@@ -13,6 +13,9 @@ import type {
   ViewMode,
   FurnitureItem,
   ChatMessage,
+  LeadForm,
+  WallMode,
+  FloorVisibility,
 } from "./types";
 import { defaultEnvironment, ENV_LIMITS } from "./environmentTemplates";
 import { defaultConfigFor } from "./furnitureCatalog";
@@ -51,12 +54,16 @@ export interface EditorState {
   selectedUid: string | null;
   role: "cliente" | "arquiteto";
   viewMode: ViewMode;
+  activeFloor: number;
+  wallMode: WallMode;
+  floorVisibility: FloorVisibility;
   snap: SnapConfig;
   gridVisible: boolean;
   warning: string | null;
   chat: ChatMessage[];
   past: Doc[];
   future: Doc[];
+  leadCaptured: boolean;
   requestedQuote: boolean;
   saved: boolean;
 }
@@ -87,12 +94,16 @@ function initialState(): EditorState {
     selectedUid: null,
     role: "cliente",
     viewMode: "isometrico",
+    activeFloor: 0,
+    wallMode: "cut",
+    floorVisibility: "currentAndBelow",
     snap: { enabled: true, floor: true, wall: true, corner: true, furniture: true, grid: false },
     gridVisible: true,
     warning: null,
     chat: [],
     past: [],
     future: [],
+    leadCaptured: false,
     requestedQuote: false,
     saved: false,
   };
@@ -161,6 +172,8 @@ export const actions = {
     commitDoc((d) => {
       d.environment = env;
     });
+    const floorMax = Math.max(0, Math.round(env.floors || 1) - 1);
+    if (orc3dStore.getState().activeFloor > floorMax) orc3dStore.setState({ activeFloor: floorMax });
   },
 
   enterEditor() {
@@ -184,6 +197,30 @@ export const actions = {
     }, false);
   },
 
+  captureLead(form: LeadForm) {
+    const now = new Date().toISOString();
+    const city = form.cidade_estado.trim();
+    const notes = form.descricao.trim();
+    commitDoc((d) => {
+      d.name = `${form.tipo_projeto} - ${form.nome}`.slice(0, 80);
+      d.client = {
+        ...d.client,
+        name: form.nome.trim(),
+        email: form.email.trim(),
+        phone: form.whatsapp.trim(),
+        city,
+        notes,
+        projectType: form.tipo_projeto,
+        desiredDeadline: form.prazo,
+        budgetRange: form.faixa_orcamento,
+        contactConsent: form.aceite,
+        source: "Orçamento 3D",
+        capturedAt: now,
+      };
+    }, false);
+    orc3dStore.setState({ leadCaptured: true, status: "novo-lead-3d", saved: true });
+  },
+
   addFurniture(item: FurnitureItem) {
     const s = orc3dStore.getState();
     if (s.doc.furniture.length >= ENV_LIMITS.maxFurniture) {
@@ -198,6 +235,7 @@ export const actions = {
         itemId: item.id,
         name: item.name,
         category: item.category,
+        floor: s.activeFloor,
         width: item.defaultWidth,
         height: item.defaultHeight,
         depth: item.defaultDepth,
@@ -259,6 +297,7 @@ export const actions = {
       const copy: PlacedFurniture = JSON.parse(JSON.stringify(src));
       copy.uid = newUid;
       copy.position = [src.position[0] + 0.4, src.position[1], src.position[2] + 0.4];
+      copy.floor = src.floor ?? 0;
       copy.locked = false;
       d.furniture.push(copy);
     });
@@ -326,6 +365,36 @@ export const actions = {
     orc3dStore.setState({ viewMode: mode });
   },
 
+  setActiveFloor(floor: number) {
+    const floors = Math.max(1, Math.round(orc3dStore.getState().doc.environment.floors || 1));
+    orc3dStore.setState({ activeFloor: Math.max(0, Math.min(floors - 1, Math.round(floor))) });
+  },
+
+  setFloorCount(count: number) {
+    const next = Math.max(1, Math.min(6, Math.round(count)));
+    const active = Math.min(orc3dStore.getState().activeFloor, next - 1);
+    commitDoc((d) => {
+      d.environment.floors = next;
+      if (next > 1 && !d.environment.hasStairs) d.environment.hasStairs = true;
+      d.furniture = d.furniture.filter((f) => (f.floor ?? 0) < next);
+    });
+    orc3dStore.setState({ activeFloor: active, selectedUid: null });
+  },
+
+  setWallMode(mode: WallMode) {
+    orc3dStore.setState({ wallMode: mode });
+  },
+
+  cycleWallMode() {
+    const cycle: WallMode[] = ["up", "cut", "down"];
+    const cur = orc3dStore.getState().wallMode;
+    orc3dStore.setState({ wallMode: cycle[(cycle.indexOf(cur) + 1) % cycle.length] });
+  },
+
+  setFloorVisibility(mode: FloorVisibility) {
+    orc3dStore.setState({ floorVisibility: mode });
+  },
+
   setSnap(patch: Partial<SnapConfig>) {
     orc3dStore.setState((s) => ({ snap: { ...s.snap, ...patch } }));
   },
@@ -361,8 +430,10 @@ export const actions = {
   },
 
   startFromScratch() {
+    const cur = orc3dStore.getState();
     const doc = freshDoc();
-    doc.environment = orc3dStore.getState().doc.environment; // mantém o ambiente
+    doc.environment = cur.doc.environment; // mantém o ambiente
+    doc.client = cur.doc.client; // mantém o lead capturado
     orc3dStore.setState({
       doc,
       past: [],
@@ -385,6 +456,11 @@ export const actions = {
 
   markQuoteRequested() {
     orc3dStore.setState({ requestedQuote: true, status: "orcamento-solicitado" });
+    orc3dStore.setState(recompute(orc3dStore.getState()));
+  },
+
+  markSentForAnalysis() {
+    orc3dStore.setState({ requestedQuote: true, status: "projeto-3d-enviado-analise" });
     orc3dStore.setState(recompute(orc3dStore.getState()));
   },
 
@@ -416,9 +492,13 @@ export const actions = {
       attendanceId,
       thumbnail: project.thumbnail,
       role: "arquiteto",
+      activeFloor: 0,
+      wallMode: "cut",
+      floorVisibility: "currentAndBelow",
       past: [],
       future: [],
       selectedUid: null,
+      leadCaptured: true,
       saved: true,
     });
     orc3dStore.setState(recompute(orc3dStore.getState()));
@@ -449,6 +529,7 @@ export const actions = {
         past: [],
         future: [],
         phase: "editing",
+        leadCaptured: true,
       });
       orc3dStore.setState(recompute(orc3dStore.getState()));
       return true;

@@ -31,7 +31,7 @@ export default function Atendimento3DCard({
           <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] ${st.cls}`}>{st.label}</span>
         </div>
         <p className="mt-0.5 truncate text-xs text-muted">
-          {p.environment.typeLabel} · {p.furniture.length} móveis · {brl(p.estimate.min)}–{brl(p.estimate.max)}
+          {p.client.projectType || p.environment.typeLabel} · {p.environment.floors} andar(es) · {p.furniture.length} móveis · {brl(p.estimate.min)}–{brl(p.estimate.max)}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted">
           {p.client.phone && <span>📞 {p.client.phone}</span>}

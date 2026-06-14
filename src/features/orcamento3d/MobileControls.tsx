@@ -13,13 +13,13 @@ export default function MobileControls() {
   const lookLast = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    if (mode !== "primeira") {
+    if (mode !== "primeira" && mode !== "terceira") {
       fpInput.forward = 0;
       fpInput.strafe = 0;
     }
   }, [mode]);
 
-  if (mode !== "primeira") return null;
+  if (mode !== "primeira" && mode !== "terceira") return null;
 
   const onJoyMove = (clientX: number, clientY: number) => {
     const base = baseRef.current;
@@ -63,19 +63,20 @@ export default function MobileControls() {
         <div ref={knobRef} className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-champagne/40" />
       </div>
 
-      {/* área de olhar (metade direita) */}
-      <div
-        className="pointer-events-auto absolute bottom-0 right-0 top-0 w-1/2 touch-none"
-        onPointerDown={(e) => { lookId.current = e.pointerId; lookLast.current = { x: e.clientX, y: e.clientY }; }}
-        onPointerMove={(e) => {
-          if (lookId.current !== e.pointerId || !lookLast.current) return;
-          fpInput.lookDX += e.clientX - lookLast.current.x;
-          fpInput.lookDY += e.clientY - lookLast.current.y;
-          lookLast.current = { x: e.clientX, y: e.clientY };
-        }}
-        onPointerUp={() => { lookId.current = null; lookLast.current = null; }}
-        onPointerCancel={() => { lookId.current = null; lookLast.current = null; }}
-      />
+      {mode === "primeira" && (
+        <div
+          className="pointer-events-auto absolute bottom-0 right-0 top-0 w-1/2 touch-none"
+          onPointerDown={(e) => { lookId.current = e.pointerId; lookLast.current = { x: e.clientX, y: e.clientY }; }}
+          onPointerMove={(e) => {
+            if (lookId.current !== e.pointerId || !lookLast.current) return;
+            fpInput.lookDX += e.clientX - lookLast.current.x;
+            fpInput.lookDY += e.clientY - lookLast.current.y;
+            lookLast.current = { x: e.clientX, y: e.clientY };
+          }}
+          onPointerUp={() => { lookId.current = null; lookLast.current = null; }}
+          onPointerCancel={() => { lookId.current = null; lookLast.current = null; }}
+        />
+      )}
 
       {/* sprint */}
       <button

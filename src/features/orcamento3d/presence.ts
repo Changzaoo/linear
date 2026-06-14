@@ -46,7 +46,7 @@ export function usePeers(): Presence[] {
 
 /* Publica o cursor (posição no piso) com throttle ~20fps. */
 let lastSent = 0;
-export function publishCursor(x: number, z: number) {
+export function publishCursor(x: number, z: number, floor = 0, ry = 0, moving = false) {
   const now = Date.now();
   if (now - lastSent < 50) return;
   lastSent = now;
@@ -57,7 +57,7 @@ export function publishCursor(x: number, z: number) {
     id: myPeerId,
     role: s.role,
     name: s.role === "arquiteto" ? "Arquiteto" : s.doc.client.name || "Cliente",
-    cursor: { x, z },
+    cursor: { x, z, floor, ry, moving },
     at: now,
   });
 }

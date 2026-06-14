@@ -108,7 +108,7 @@ export default function EnvironmentSetup({ onCreate, onCancel }: Props) {
                 onChange={(v) => patch({ height: clamp(v, ENV_LIMITS.height) })} suffix="cm" />
             </Field>
             <Field label="Andares">
-              <NumberInput value={env.floors} min={1} max={4} onChange={(v) => patch({ floors: clamp(v, ENV_LIMITS.floors) })} />
+              <NumberInput value={env.floors} min={1} max={6} onChange={(v) => patch({ floors: clamp(v, ENV_LIMITS.floors) })} />
             </Field>
             <Field label="Piso">
               <Segmented options={FLOOR_OPTS} value={env.floorType} onChange={(v) => patch({ floorType: v })} />

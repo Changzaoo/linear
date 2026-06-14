@@ -1,11 +1,12 @@
 import { Btn, Field, NumberInput, Segmented, Slider, Toggle } from "./studioUi";
-import { actions, useSelectedFurniture } from "./useOrcamento3DStore";
+import { actions, useOrc3d, useSelectedFurniture } from "./useOrcamento3DStore";
 import { CATALOG_MAP } from "./furnitureCatalog";
 import { MATERIALS } from "./materials";
 import { priceOf, brl } from "./pricingEngine";
 
 export default function FurnitureEditor() {
   const f = useSelectedFurniture();
+  const floorCount = useOrc3d((s) => Math.max(1, Math.round(s.doc.environment.floors || 1)));
 
   if (!f) {
     return (
@@ -60,6 +61,20 @@ export default function FurnitureEditor() {
 
         <Field label={`Rotação (${Math.round((f.rotationY * 180) / Math.PI)}°)`}>
           <Slider value={f.rotationY} min={-Math.PI} max={Math.PI} step={Math.PI / 24} onChange={(v) => u({ rotationY: v })} />
+        </Field>
+
+        <Field label="Andar">
+          <select
+            value={f.floor ?? 0}
+            onChange={(e) => u({ floor: Number(e.target.value) })}
+            className="w-full rounded-lg border border-champagne/20 bg-surface/60 px-3 py-2 text-sm text-text outline-none focus:border-champagne/50"
+          >
+            {Array.from({ length: floorCount }).map((_, floor) => (
+              <option key={floor} value={floor}>
+                {floor === 0 ? "Térreo" : `${floor + 1}º andar`}
+              </option>
+            ))}
+          </select>
         </Field>
 
         {/* material */}

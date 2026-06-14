@@ -5,6 +5,7 @@ const MODES: { value: ViewMode; label: string; key: string }[] = [
   { value: "primeira", label: "1ª Pessoa", key: "1" },
   { value: "terceira", label: "3ª Pessoa", key: "2" },
   { value: "isometrico", label: "Isométrico", key: "3" },
+  { value: "topo", label: "Vista superior", key: "4" },
 ];
 
 export default function ViewModeSwitcher() {

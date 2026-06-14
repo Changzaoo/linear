@@ -47,8 +47,8 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
   };
 
   const requestQuote = () => {
-    actions.markQuoteRequested();
-    persist("orcamento-solicitado");
+    actions.markSentForAnalysis();
+    persist("projeto-3d-enviado-analise");
     if (assisted) notifyAvailableArchitects(buildProject3D());
     setDialog(null);
     toast("Recebemos seu projeto. Nossa equipe irá analisar cada detalhe.", "success");
@@ -84,7 +84,7 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
       <Btn size={size} onClick={() => { if (confirm("Começar do zero? Os móveis atuais serão removidos.")) { actions.startFromScratch(); toast("Novo projeto iniciado.", "info"); } after(); }}>Começar do zero</Btn>
       <Btn size={size} onClick={() => { callArchitect(); after(); }} active={assisted}>Chamar arquiteto</Btn>
       <Btn size={size} variant="ghost" onClick={() => { setDialog("save"); after(); }}>Salvar</Btn>
-      <Btn size={size} variant="primary" onClick={() => { setDialog("quote"); after(); }}>Solicitar orçamento</Btn>
+      <Btn size={size} variant="primary" onClick={() => { setDialog("quote"); after(); }}>Enviar para análise</Btn>
       <Btn size={size} onClick={closeStudio} title="Voltar para o site">✕ Sair</Btn>
     </>
   );
@@ -158,7 +158,7 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
               {(dialog === "save" || dialog === "quote") && (
                 <div className="space-y-3">
                   <h3 className="font-display text-xl text-text">
-                    {dialog === "save" ? "Salvar projeto" : "Solicitar orçamento"}
+                    {dialog === "save" ? "Salvar projeto" : "Enviar para análise"}
                   </h3>
 
                   {dialog === "quote" && (
@@ -206,7 +206,7 @@ export default function ProjectActions({ variant = "bar" }: { variant?: "bar" | 
                     {dialog === "save" ? (
                       <Btn variant="primary" onClick={save}>Salvar projeto</Btn>
                     ) : (
-                      <Btn variant="primary" disabled={!contactOk} onClick={requestQuote}>Enviar solicitação</Btn>
+                      <Btn variant="primary" disabled={!contactOk} onClick={requestQuote}>Enviar para análise</Btn>
                     )}
                   </div>
                   {dialog === "quote" && !contactOk && (

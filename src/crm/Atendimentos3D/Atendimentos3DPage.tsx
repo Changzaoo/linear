@@ -14,8 +14,10 @@ import { STATUS_META } from "./statusMeta";
 
 const FILTERS: { value: ProjectStatus | "todos"; label: string }[] = [
   { value: "todos", label: "Todos" },
+  { value: "novo-lead-3d", label: "Novos" },
   { value: "aguardando-arquiteto", label: "Aguardando" },
   { value: "em-atendimento", label: "Em atendimento" },
+  { value: "projeto-3d-enviado-analise", label: "Análise" },
   { value: "orcamento-solicitado", label: "Orçamento" },
   { value: "em-negociacao", label: "Negociação" },
   { value: "fechado", label: "Fechados" },
@@ -97,7 +99,7 @@ export default function Atendimentos3DPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-widest2 text-champagne/80">LINEAR · CRM</p>
-            <h1 className="font-display text-2xl text-text">Atendimentos 3D</h1>
+            <h1 className="font-display text-2xl text-text">Suporte 3D / Arquiteto</h1>
           </div>
           <div className="flex items-center gap-4">
             <NetStatus />
@@ -141,7 +143,7 @@ export default function Atendimentos3DPage() {
           <div className="rounded-xl border border-champagne/15 bg-surface/60 p-4 text-xs text-muted">
             <p className="mb-1 font-semibold text-text">Como funciona</p>
             Quando um cliente solicita arquiteto no Estúdio 3D, o atendimento entra aqui em tempo real.
-            Abra outra aba no Estúdio para ver a sincronização.
+            Abra outra aba no Estúdio para ver a sincronização de lead, ambiente, andares e móveis.
           </div>
         </aside>
       </main>

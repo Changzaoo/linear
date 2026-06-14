@@ -68,6 +68,8 @@ export interface PlacedFurniture {
   itemId: string; // referência ao catálogo
   name: string;
   category: FurnitureCategory;
+  /** andar do móvel: térreo = 0 */
+  floor: number;
   width: number;
   height: number;
   depth: number;
@@ -114,6 +116,24 @@ export interface ClientInfo {
   email: string;
   city: string;
   notes: string;
+  projectType?: string;
+  desiredDeadline?: string;
+  budgetRange?: string;
+  contactConsent?: boolean;
+  source?: string;
+  capturedAt?: string;
+}
+
+export interface LeadForm {
+  nome: string;
+  email: string;
+  whatsapp: string;
+  cidade_estado: string;
+  tipo_projeto: string;
+  prazo: string;
+  faixa_orcamento: string;
+  descricao: string;
+  aceite: boolean;
 }
 
 export interface Estimate {
@@ -124,11 +144,13 @@ export interface Estimate {
 }
 
 export type ProjectStatus =
+  | "novo-lead-3d"
   | "rascunho"
   | "aguardando-arquiteto"
   | "em-atendimento"
   | "projeto-em-edicao"
   | "orcamento-solicitado"
+  | "projeto-3d-enviado-analise"
   | "orcamento-enviado"
   | "em-negociacao"
   | "fechado"
@@ -169,6 +191,9 @@ export interface ChatMessage {
   at: string;
 }
 
+export type WallMode = "up" | "cut" | "down";
+export type FloorVisibility = "current" | "currentAndBelow" | "all";
+
 /** Atendimento 3D = lead persistido no CRM. */
 export interface Attendance {
   id: string;
@@ -186,4 +211,4 @@ export interface ChecklistResult {
   ok: boolean;
 }
 
-export type ViewMode = "primeira" | "terceira" | "isometrico";
+export type ViewMode = "primeira" | "terceira" | "isometrico" | "topo";

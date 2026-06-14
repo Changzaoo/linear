@@ -23,6 +23,12 @@ const NEXT_STATUS: { status: ProjectStatus; label: string }[] = [
   { status: "arquivado", label: "Arquivar" },
 ];
 
+const whatsappUrl = (phone: string, name: string) => {
+  const clean = phone.replace(/\D/g, "");
+  const msg = `Olá ${name || ""}, vi seu projeto no Estúdio 3D da LINEAR e posso te ajudar com a análise.`;
+  return `https://wa.me/${clean}?text=${encodeURIComponent(msg)}`;
+};
+
 export default function Atendimento3DDetails({
   id,
   onClose,
@@ -82,8 +88,11 @@ export default function Atendimento3DDetails({
           <Info label="Telefone" value={p.client.phone || "—"} />
           <Info label="E-mail" value={p.client.email || "—"} />
           <Info label="Cidade" value={p.client.city || "—"} />
+          <Info label="Tipo de projeto" value={p.client.projectType || p.environment.typeLabel} />
+          <Info label="Prazo" value={p.client.desiredDeadline || "—"} />
+          <Info label="Faixa estimada" value={p.client.budgetRange || "—"} />
           <Info label="Ambiente" value={p.environment.typeLabel} />
-          <Info label="Medidas" value={`${p.environment.width}×${p.environment.depth}×${p.environment.height} cm`} />
+          <Info label="Medidas" value={`${p.environment.width}×${p.environment.depth}×${p.environment.height} cm · ${p.environment.floors} andar(es)`} />
           <Info label="Estimativa" value={`${brl(p.estimate.min)}–${brl(p.estimate.max)}`} />
           <Info label="Arquiteto" value={att.architectName || "—"} />
           <Info label="Atualizado" value={new Date(att.updatedAt).toLocaleString("pt-BR")} />
@@ -95,7 +104,7 @@ export default function Atendimento3DDetails({
             {p.furniture.length === 0 && <li className="text-muted">Nenhum móvel.</li>}
             {p.furniture.map((f) => (
               <li key={f.uid} className="flex justify-between gap-2">
-                <span className="truncate">{f.name} · {MATERIAL_MAP[f.config.material]?.label}</span>
+                <span className="truncate">{f.name} · {(f.floor ?? 0) === 0 ? "Térreo" : `${(f.floor ?? 0) + 1}º andar`} · {MATERIAL_MAP[f.config.material]?.label}</span>
                 <span className="text-muted">{f.width}×{f.height}×{f.depth}</span>
               </li>
             ))}
@@ -134,6 +143,16 @@ export default function Atendimento3DDetails({
         <div className="grid grid-cols-2 gap-2">
           <Btn variant="primary" size="sm" onClick={enterEnvironment}>Entrar no ambiente</Btn>
           <Btn size="sm" onClick={assumeWithArchitect}>Assumir atendimento</Btn>
+          {p.client.phone && (
+            <a
+              href={whatsappUrl(p.client.phone, p.client.name)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-lg border border-champagne/20 px-2.5 py-1.5 text-xs font-medium text-text transition hover:border-champagne/50 hover:bg-champagne/5"
+            >
+              Chamar no WhatsApp
+            </a>
+          )}
           {NEXT_STATUS.slice(1).map((s) => (
             <Btn key={s.status} size="sm" onClick={() => setAtt(setAttendanceStatus(att.id, s.status))}>
               {s.label}

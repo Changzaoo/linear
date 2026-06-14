@@ -29,6 +29,7 @@ function buildHTML(p: Project3D): string {
     .map(
       (f) => `<tr>
         <td>${escapeHtml(f.name)}</td>
+        <td>${(f.floor ?? 0) === 0 ? "Térreo" : `${(f.floor ?? 0) + 1}º andar`}</td>
         <td>${f.width}×${f.height}×${f.depth} cm</td>
         <td>${escapeHtml(MATERIAL_MAP[f.config.material]?.label ?? f.config.material)}</td>
         <td>${f.config.doors} / ${f.config.drawers}</td>
@@ -59,17 +60,20 @@ function buildHTML(p: Project3D): string {
   <p class="badge">Estimativa: ${brl(p.estimate.min)} a ${brl(p.estimate.max)}</p>
   <div class="grid">
     <div class="card"><div class="muted">Ambiente</div><b>${escapeHtml(p.environment.typeLabel)}</b></div>
-    <div class="card"><div class="muted">Medidas</div><b>${p.environment.width}×${p.environment.depth}×${p.environment.height} cm</b></div>
+    <div class="card"><div class="muted">Medidas</div><b>${p.environment.width}×${p.environment.depth}×${p.environment.height} cm · ${p.environment.floors} andar(es)</b></div>
     <div class="card"><div class="muted">Complexidade</div><b>${p.estimate.complexity}</b></div>
     <div class="card"><div class="muted">Prazo</div><b>${p.estimate.deadlineDays[0]}–${p.estimate.deadlineDays[1]} dias</b></div>
   </div>
   <div class="grid">
     <div class="card"><div class="muted">Cliente</div><b>${escapeHtml(p.client.name || "—")}</b><div class="muted">${escapeHtml(p.client.phone)} · ${escapeHtml(p.client.email)}</div></div>
     <div class="card"><div class="muted">Cidade</div><b>${escapeHtml(p.client.city || "—")}</b></div>
+    <div class="card"><div class="muted">Tipo de projeto</div><b>${escapeHtml(p.client.projectType || p.environment.typeLabel)}</b></div>
+    <div class="card"><div class="muted">Prazo desejado</div><b>${escapeHtml(p.client.desiredDeadline || "—")}</b></div>
+    <div class="card"><div class="muted">Faixa estimada</div><b>${escapeHtml(p.client.budgetRange || "—")}</b></div>
   </div>
   ${p.thumbnail ? `<img src="${p.thumbnail}" alt="Prévia do projeto"/>` : ""}
-  <table><thead><tr><th>Móvel</th><th>Dimensões</th><th>Material</th><th>P/G</th><th>LED</th><th>Obs.</th></tr></thead>
-  <tbody>${rows || `<tr><td colspan="6" class="muted">Nenhum móvel.</td></tr>`}</tbody></table>
+  <table><thead><tr><th>Móvel</th><th>Andar</th><th>Dimensões</th><th>Material</th><th>P/G</th><th>LED</th><th>Obs.</th></tr></thead>
+  <tbody>${rows || `<tr><td colspan="7" class="muted">Nenhum móvel.</td></tr>`}</tbody></table>
   ${p.client.notes ? `<p class="muted" style="margin-top:16px">Observações: ${escapeHtml(p.client.notes)}</p>` : ""}
   <p class="muted" style="margin-top:24px">Estimativa inicial. A equipe técnica enviará o orçamento final após análise.</p>
   </body></html>`;

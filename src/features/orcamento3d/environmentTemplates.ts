@@ -85,6 +85,6 @@ export const ENV_LIMITS = {
   width: [150, 3000] as [number, number],
   depth: [150, 3000] as [number, number],
   height: [220, 800] as [number, number],
-  floors: [1, 4] as [number, number],
+  floors: [1, 6] as [number, number],
   maxFurniture: 60,
 };

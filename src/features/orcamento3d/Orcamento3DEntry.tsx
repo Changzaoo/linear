@@ -49,13 +49,13 @@ export default function Orcamento3DEntry({ progress }: Props) {
         >
           <div className="pointer-events-auto px-2 py-1 text-center">
             {mobile ? (
-              <motion.p className="mt-2 text-sm text-muted">
-                Pressione{" "}
-                <kbd className="mx-1 rounded-md border border-champagne/40 bg-surface px-2.5 py-1 font-sans text-xs font-semibold tracking-wide text-champagne">
-                  ENTER
-                </kbd>{" "}
-                para iniciar seu orçamento 3D
-              </motion.p>
+              <button
+                type="button"
+                onClick={openStudio}
+                className="rounded-full border border-champagne/40 bg-surface/85 px-5 py-3 text-sm font-semibold tracking-wide text-champagne shadow-card backdrop-blur-md"
+              >
+                Iniciar orçamento 3D
+              </button>
             ) : (
               <motion.p
                 animate={{ opacity: [0.55, 1, 0.55] }}

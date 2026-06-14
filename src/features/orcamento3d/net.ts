@@ -11,12 +11,35 @@
 
 type Handler = (data: any) => void;
 
+// Relay na nuvem (Render) — usado em produção quando não há env apontando
+// para outro servidor. É o que faz o cliente (num device) e o arquiteto
+// (noutro) se acharem pela internet, fora da rede local.
+const CLOUD_RELAY = "wss://linear-realtime-relay.onrender.com";
+
+function isLanHost(host: string): boolean {
+  return /^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(host);
+}
+function isLanUrl(u: string): boolean {
+  try {
+    return isLanHost(new URL(u).hostname);
+  } catch {
+    return false;
+  }
+}
+
 function resolveUrl(): string {
-  const env = import.meta.env?.VITE_COLLAB_WS_URL;
-  if (env) return env;
+  const env = import.meta.env?.VITE_COLLAB_WS_URL?.trim();
+  const onLan = typeof window !== "undefined" && isLanHost(window.location.hostname);
+
+  // Um env apontando para rede local (ex.: ws://192.168.x.x:8787) é inútil num
+  // domínio público — foi exatamente o que quebrou o deploy. Nesse caso ignora
+  // o env e cai no relay da nuvem. Fora isso, respeita o env.
+  if (env && !(isLanUrl(env) && !onLan)) return env;
+
   if (typeof window === "undefined") return "";
+  if (!onLan) return CLOUD_RELAY; // produção: relay na nuvem
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${proto}://${window.location.hostname}:8787`;
+  return `${proto}://${window.location.hostname}:8787`; // dev local
 }
 
 const URL_WS = resolveUrl();

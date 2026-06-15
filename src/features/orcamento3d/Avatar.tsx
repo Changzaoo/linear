@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Html } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { Euler, Quaternion } from "three";
+import { Euler, Quaternion, Vector3 } from "three";
 import type { Group, AnimationAction, AnimationMixer } from "three";
 import { getAvatarModel, type AvatarInstance } from "./avatarModel";
 
@@ -14,6 +14,7 @@ function shortName(name?: string) {
 
 const TMP_Q = new Quaternion();
 const TMP_E = new Euler();
+const TMP_V = new Vector3();
 function wrap(a: number) {
   while (a > Math.PI) a -= Math.PI * 2;
   while (a < -Math.PI) a += Math.PI * 2;
@@ -39,6 +40,7 @@ export default function Avatar({
   const prevYaw = useRef<number | null>(null);
   const turnHold = useRef(0);
   const turnDir = useRef(0);
+  const prevPos = useRef<{ x: number; z: number } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -64,8 +66,10 @@ export default function Avatar({
     if (mixer && inst) {
       mixer.update(delta);
 
-      // detecta giro pela variação do yaw no mundo (vale p/ local e remoto)
+      // detecta giro (variação do yaw) e direção do passo (frente/trás) pela
+      // variação da posição no mundo — vale para o avatar local e os remotos.
       let turning = 0;
+      let back = false;
       if (outer.current) {
         outer.current.getWorldQuaternion(TMP_Q);
         const yaw = TMP_E.setFromQuaternion(TMP_Q, "YXZ").y;
@@ -77,13 +81,24 @@ export default function Avatar({
           }
         }
         prevYaw.current = yaw;
+
+        outer.current.getWorldPosition(TMP_V);
+        if (prevPos.current && delta > 0) {
+          const vx = TMP_V.x - prevPos.current.x;
+          const vz = TMP_V.z - prevPos.current.z;
+          if (Math.hypot(vx, vz) > 0.0009) {
+            // frente local = +Z → (sin yaw, cos yaw); produto escalar < 0 = ré
+            back = vx * Math.sin(yaw) + vz * Math.cos(yaw) < 0;
+          }
+        }
+        prevPos.current = { x: TMP_V.x, z: TMP_V.z };
       }
       if (turnHold.current > 0) turnHold.current -= delta;
       if (!moving && turnHold.current > 0) turning = turnDir.current;
 
-      // escolhe a ação: andar > virar > parado
+      // escolhe a ação: andar (frente/trás) > virar > parado
       let want: AnimationAction | null = null;
-      if (moving) want = inst.walk;
+      if (moving) want = back && inst.walkBack ? inst.walkBack : inst.walk;
       else if (turning < 0 && inst.turnLeft) want = inst.turnLeft;
       else if (turning > 0 && inst.turnRight) want = inst.turnRight;
       else want = inst.idle;

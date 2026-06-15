@@ -66,6 +66,8 @@ export default function Orcamento3DApp() {
   const role = useOrc3d((s) => s.role);
   const warning = useOrc3d((s) => s.warning);
   const leadCaptured = useOrc3d((s) => s.leadCaptured);
+  const viewMode = useOrc3d((s) => s.viewMode);
+  const cursorMode = useOrc3d((s) => s.cursorMode);
   const { isMobile: mobile, orientation } = useDeviceInfo();
   const webgl = supportsWebGL();
 
@@ -212,6 +214,16 @@ export default function Orcamento3DApp() {
             </div>
             <div className="flex items-center gap-1.5">
               <VoiceChat />
+              {(viewMode === "primeira" || viewMode === "terceira") && (
+                <Btn
+                  size="sm"
+                  active={cursorMode}
+                  onClick={() => actions.toggleCursorMode()}
+                  title="Liberar o ponteiro para adicionar e arrastar móveis em 1ª/3ª pessoa"
+                >
+                  {cursorMode ? "🖱️ Cursor ✓" : "🖱️ Cursor"}
+                </Btn>
+              )}
               <Btn size="sm" onClick={openTutorial} title="Abrir o tutorial do editor 3D">Tutorial</Btn>
               <HelpOverlay />
               <Btn size="sm" onClick={toggleFullscreen} title="Tela cheia">⤢</Btn>

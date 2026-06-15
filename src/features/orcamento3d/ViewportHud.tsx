@@ -8,6 +8,7 @@ import { useOrc3d } from "./useOrcamento3DStore";
      1ª pessoa, com a dica de pressionar ESC para liberá-lo. */
 export default function ViewportHud({ mobile }: { mobile: boolean }) {
   const viewMode = useOrc3d((s) => s.viewMode);
+  const cursorMode = useOrc3d((s) => s.cursorMode);
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
@@ -17,8 +18,9 @@ export default function ViewportHud({ mobile }: { mobile: boolean }) {
     return () => document.removeEventListener("pointerlockchange", sync);
   }, []);
 
-  const showCrosshair = viewMode === "primeira" || viewMode === "terceira";
-  const firstPerson = viewMode === "primeira" && !mobile;
+  const walk = viewMode === "primeira" || viewMode === "terceira";
+  const showCrosshair = walk && !cursorMode;
+  const firstPerson = viewMode === "primeira" && !mobile && !cursorMode;
 
   return (
     <>
@@ -28,6 +30,16 @@ export default function ViewportHud({ mobile }: { mobile: boolean }) {
           <div className="relative flex items-center justify-center">
             <span className="absolute h-5 w-5 rounded-full border border-white/25" />
             <span className="h-1.5 w-1.5 rounded-full bg-white/90 shadow-[0_0_4px_rgba(0,0,0,0.9)] ring-1 ring-black/50" />
+          </div>
+        </div>
+      )}
+
+      {/* modo cursor ativo em 1ª/3ª pessoa: ponteiro liberado p/ editar */}
+      {walk && cursorMode && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-[15] flex justify-center px-4">
+          <div className="flex items-center gap-2 rounded-full border border-champagne/40 bg-[rgba(12,10,8,0.82)] px-4 py-2 text-xs text-champagne backdrop-blur-md">
+            <span aria-hidden>🖱️</span>
+            <span>Ponteiro liberado — clique e arraste os móveis. Toque em <b className="text-text">Cursor</b> para voltar a navegar.</span>
           </div>
         </div>
       )}

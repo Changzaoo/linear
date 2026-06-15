@@ -266,6 +266,16 @@ function PresenceAvatars({ floorHeight, roomW, roomD, isFloorVisible }: {
   );
 }
 
+/* ---------- colisão simples avatar ↔ móveis (AABB no plano XZ) ---------- */
+export type Obstacle = { x: number; z: number; hw: number; hd: number };
+const AVATAR_R = 0.28; // "raio" do avatar (m)
+function hitsObstacle(x: number, z: number, obs: Obstacle[]): boolean {
+  for (const o of obs) {
+    if (Math.abs(x - o.x) < o.hw + AVATAR_R && Math.abs(z - o.z) < o.hd + AVATAR_R) return true;
+  }
+  return false;
+}
+
 /* ---------- câmera por modo ---------- */
 function CameraRig({
   mode,
@@ -274,6 +284,7 @@ function CameraRig({
   activeFloor,
   role,
   name,
+  obstacles,
 }: {
   mode: ViewMode;
   env: EnvironmentConfig;
@@ -281,6 +292,7 @@ function CameraRig({
   activeFloor: number;
   role: "cliente" | "arquiteto";
   name: string;
+  obstacles: Obstacle[];
 }) {
   const { camera } = useThree();
   const w = env.width / 100;
@@ -325,15 +337,18 @@ function CameraRig({
       const speed = 1.8 * dt;
       const turn = 2.35 * dt;
       avatarPos.current.ry -= fpInput.strafe * turn;
-      if (fpInput.forward) {
-        avatarPos.current.x += Math.sin(avatarPos.current.ry) * fpInput.forward * speed;
-        avatarPos.current.z += Math.cos(avatarPos.current.ry) * fpInput.forward * speed;
-        isMoving = true;
-      }
       const halfW = w / 2 - 0.3;
       const halfD = d / 2 - 0.3;
-      avatarPos.current.x = Math.max(-halfW, Math.min(halfW, avatarPos.current.x));
-      avatarPos.current.z = Math.max(-halfD, Math.min(halfD, avatarPos.current.z));
+      if (fpInput.forward) {
+        const dx = Math.sin(avatarPos.current.ry) * fpInput.forward * speed;
+        const dz = Math.cos(avatarPos.current.ry) * fpInput.forward * speed;
+        // move por eixo, respeitando paredes e colidindo com os móveis (desliza)
+        const nx = Math.max(-halfW, Math.min(halfW, avatarPos.current.x + dx));
+        if (!hitsObstacle(nx, avatarPos.current.z, obstacles)) avatarPos.current.x = nx;
+        const nz = Math.max(-halfD, Math.min(halfD, avatarPos.current.z + dz));
+        if (!hitsObstacle(avatarPos.current.x, nz, obstacles)) avatarPos.current.z = nz;
+        isMoving = true;
+      }
       avatarRef.current?.position.set(avatarPos.current.x, floorY, avatarPos.current.z);
       if (avatarRef.current) avatarRef.current.rotation.y = avatarPos.current.ry;
 
@@ -355,21 +370,24 @@ function CameraRig({
       fpInput.lookDY = 0;
     }
     const speed = 1.7 * dt;
+    const halfW = w / 2 - 0.3;
+    const halfD = d / 2 - 0.3;
     if (fpInput.forward || fpInput.strafe) {
       const dir = new THREE.Vector3();
       camera.getWorldDirection(dir);
       dir.y = 0;
       dir.normalize();
       const right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
-      camera.position.addScaledVector(dir, fpInput.forward * speed);
-      camera.position.addScaledVector(right, fpInput.strafe * speed);
+      const dxv = dir.x * fpInput.forward * speed + right.x * fpInput.strafe * speed;
+      const dzv = dir.z * fpInput.forward * speed + right.z * fpInput.strafe * speed;
+      // move por eixo com colisão (desliza ao encostar num móvel)
+      const nx = Math.max(-halfW, Math.min(halfW, camera.position.x + dxv));
+      if (!hitsObstacle(nx, camera.position.z, obstacles)) camera.position.x = nx;
+      const nz = Math.max(-halfD, Math.min(halfD, camera.position.z + dzv));
+      if (!hitsObstacle(camera.position.x, nz, obstacles)) camera.position.z = nz;
       isMoving = true;
     }
     camera.position.y = floorY + 1.6;
-    const halfW = w / 2 - 0.3;
-    const halfD = d / 2 - 0.3;
-    camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
-    camera.position.z = Math.max(-halfD, Math.min(halfD, camera.position.z));
     }
 
     if ((mode === "primeira" || mode === "terceira") && state.clock.elapsedTime - lastPresence.current > 0.12) {
@@ -457,12 +475,23 @@ function SceneContents({ mobile }: { mobile: boolean }) {
   const clientName = useOrc3d((s) => s.doc.client.name);
   const snap = useOrc3d((s) => s.snap);
   const gridVisible = useOrc3d((s) => s.gridVisible);
+  const cursorMode = useOrc3d((s) => s.cursorMode);
 
   const orbitRef = useRef<any>(null);
   const [draggingUid, setDraggingUid] = useState<string | null>(null);
   const dragBaseY = useRef(0);
   const floorHeight = env.height / 100;
   const activeFloorY = activeFloor * floorHeight;
+  const walkMode = viewMode === "primeira" || viewMode === "terceira";
+
+  // móveis do andar ativo viram obstáculos de colisão para o avatar
+  const obstacles = useMemo<Obstacle[]>(
+    () =>
+      furniture
+        .filter((f) => (f.floor ?? 0) === activeFloor)
+        .map((f) => ({ x: f.position[0], z: f.position[2], hw: f.width / 200, hd: f.depth / 200 })),
+    [furniture, activeFloor]
+  );
   const isFloorVisible = useMemo(
     () => (floor: number) => floorVisible(floor, activeFloor, floorVisibility),
     [activeFloor, floorVisibility]
@@ -485,7 +514,9 @@ function SceneContents({ mobile }: { mobile: boolean }) {
   const onFurnitureDown = (f: PlacedFurniture) => (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     actions.select(f.uid);
-    if (viewMode === "primeira" || f.locked || (f.floor ?? 0) !== activeFloor) return;
+    if (f.locked || (f.floor ?? 0) !== activeFloor) return;
+    // em 1ª/3ª pessoa só arrasta com o modo cursor ligado (ponteiro liberado)
+    if (walkMode && !cursorMode) return;
     dragBaseY.current = f.position[1];
     actions.beginDrag();
     setDraggingUid(f.uid);
@@ -517,7 +548,7 @@ function SceneContents({ mobile }: { mobile: boolean }) {
     <>
       {/* Ambiente de render ÚNICO (fonte: shared3d) — idêntico no site e no CRM */}
       <SceneEnvironment maxDim={Math.max(env.width, env.depth) / 100} mobile={mobile} />
-      <CameraRig mode={viewMode} env={env} mobile={mobile} activeFloor={activeFloor} role={role} name={clientName || "Cliente"} />
+      <CameraRig mode={viewMode} env={env} mobile={mobile} activeFloor={activeFloor} role={role} name={clientName || "Cliente"} obstacles={obstacles} />
       <Capturer />
 
       <Room
@@ -563,7 +594,7 @@ function SceneContents({ mobile }: { mobile: boolean }) {
           target={[0, viewMode === "topo" ? activeFloorY : activeFloorY + 0.4, 0]}
         />
       )}
-      {viewMode === "primeira" && !mobile && <PointerLockControls makeDefault />}
+      {viewMode === "primeira" && !mobile && !cursorMode && <PointerLockControls makeDefault />}
     </>
   );
 }

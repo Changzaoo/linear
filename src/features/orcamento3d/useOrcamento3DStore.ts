@@ -56,6 +56,8 @@ export interface EditorState {
   selectedUid: string | null;
   role: "cliente" | "arquiteto";
   viewMode: ViewMode;
+  /** modo cursor: libera o ponteiro p/ adicionar/mover móveis em 1ª/3ª pessoa. */
+  cursorMode: boolean;
   activeFloor: number;
   wallMode: WallMode;
   floorVisibility: FloorVisibility;
@@ -96,6 +98,7 @@ function initialState(): EditorState {
     selectedUid: null,
     role: "cliente",
     viewMode: "isometrico",
+    cursorMode: false,
     activeFloor: 0,
     wallMode: "cut",
     floorVisibility: "currentAndBelow",
@@ -409,6 +412,13 @@ export const actions = {
 
   setViewMode(mode: ViewMode) {
     orc3dStore.setState({ viewMode: mode });
+  },
+
+  toggleCursorMode() {
+    orc3dStore.setState((s) => ({ cursorMode: !s.cursorMode }));
+  },
+  setCursorMode(v: boolean) {
+    orc3dStore.setState({ cursorMode: v });
   },
 
   setActiveFloor(floor: number) {

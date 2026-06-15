@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Html } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import type { Group, Object3D } from "three";
-import { getAvatarModel } from "./avatarModel";
+import type { Group, AnimationAction, AnimationMixer } from "three";
+import { getAvatarModel, type AvatarInstance } from "./avatarModel";
 
 type Role = "cliente" | "arquiteto";
 
-/* Mostra só o primeiro nome (até 2 palavras) para a etiqueta não estourar. */
 function shortName(name?: string) {
   if (!name) return "";
   return name.trim().split(/\s+/).slice(0, 2).join(" ");
@@ -24,23 +23,45 @@ export default function Avatar({
   label?: boolean;
 }) {
   const rig = useRef<Group>(null);
-  const [model, setModel] = useState<Object3D | null>(null);
+  const [inst, setInst] = useState<AvatarInstance | null>(null);
+  const mixerRef = useRef<AnimationMixer | null>(null);
+  const currentAction = useRef<AnimationAction | null>(null);
 
   useEffect(() => {
     let alive = true;
     getAvatarModel(role)
-      .then((o) => alive && setModel(o))
+      .then((a) => {
+        if (!alive) return;
+        setInst(a);
+        mixerRef.current = a.mixer;
+        if (a.idle) {
+          a.idle.play();
+          currentAction.current = a.idle;
+        }
+      })
       .catch(() => {});
     return () => {
       alive = false;
+      mixerRef.current?.stopAllAction();
     };
   }, [role]);
 
-  // Animação procedural (modelos OBJ não têm esqueleto): passada com balanço
-  // vertical, leve inclinação à frente e gingado; respiração quando parado.
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
+  useFrame((state, delta) => {
+    const mixer = mixerRef.current;
+    if (mixer && inst) {
+      // animação esquelética real (modelo riggado) — alterna idle/andar
+      mixer.update(delta);
+      const want = moving ? inst.walk : inst.idle;
+      if (want && currentAction.current !== want) {
+        currentAction.current?.fadeOut(0.25);
+        want.reset().fadeIn(0.25).play();
+        currentAction.current = want;
+      }
+      return;
+    }
+    // sem esqueleto: animação procedural no corpo inteiro
     if (!rig.current) return;
+    const t = state.clock.elapsedTime;
     if (moving) {
       const ph = t * 7.5;
       rig.current.position.y = Math.abs(Math.sin(ph)) * 0.06;
@@ -62,10 +83,9 @@ export default function Avatar({
       </mesh>
 
       <group ref={rig}>
-        {model ? (
-          <primitive object={model} dispose={null} />
+        {inst ? (
+          <primitive object={inst.object} dispose={null} />
         ) : (
-          // placeholder discreto enquanto o modelo carrega
           <mesh position={[0, 0.85, 0]} castShadow>
             <capsuleGeometry args={[0.18, 0.95, 6, 12]} />
             <meshStandardMaterial color={role === "arquiteto" ? "#2b3d4f" : "#7c6a4f"} roughness={0.75} transparent opacity={0.55} />
@@ -74,13 +94,7 @@ export default function Avatar({
       </group>
 
       {label && name && (
-        <Html
-          position={[0, 1.95, 0]}
-          center
-          occlude={false}
-          zIndexRange={[24, 12]}
-          style={{ pointerEvents: "none" }}
-        >
+        <Html position={[0, 1.95, 0]} center occlude={false} zIndexRange={[24, 12]} style={{ pointerEvents: "none" }}>
           <div
             className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium leading-none shadow-sm ${
               role === "arquiteto"

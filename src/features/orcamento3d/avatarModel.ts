@@ -1,22 +1,28 @@
 import * as THREE from "three";
 
 /* ============================================================
-   Carrega os modelos 3D reais (OBJ) usados como avatares do
-   cliente e do arquiteto. Sem .mtl no pacote, então recolorimos
-   por nome de material/objeto (skin, eyes, hair, shirt, pants,
-   shoes, blue/red/white/yellow…). O modelo é carregado uma vez
-   por papel e clonado por instância (geometria compartilhada).
+   Avatares do cliente e do arquiteto.
+
+   Detecta automaticamente o melhor arquivo em /models/<papel>.<ext>
+   na ordem .glb → .fbx → .obj:
+   - .glb / .fbx RIGGADOS (ex.: exportados do Mixamo) → tocam a
+     animação de esqueleto real (idle/andar) via AnimationMixer.
+   - .obj (sem esqueleto) → recolorido por nome e animado de forma
+     procedural (passada/respiração) pelo componente Avatar.
+
+   Para ter animação esquelética de verdade: suba o modelo no
+   https://www.mixamo.com (grátis), use Auto-Rigger, aplique as
+   animações "Idle" e "Walking" (marque "In Place"), baixe em FBX
+   (ou converta p/ glb) e salve como /public/models/arquiteto.fbx
+   e /public/models/cliente.fbx — o app passa a animá-los sozinho.
    ============================================================ */
 
 export type AvatarRole = "cliente" | "arquiteto";
 
-const URL: Record<AvatarRole, string> = {
-  arquiteto: "/models/arquiteto.obj",
-  cliente: "/models/cliente.obj",
-};
 const TARGET_H: Record<AvatarRole, number> = { arquiteto: 1.82, cliente: 1.66 };
-/** Rotação base no eixo Y. Se um modelo aparecer de costas, troque para Math.PI. */
-const FACE: Record<AvatarRole, number> = { arquiteto: Math.PI, cliente: Math.PI };
+/** Rotação base no eixo Y para o modelo olhar para a FRENTE (eixo +Z local). */
+const FACE: Record<AvatarRole, number> = { arquiteto: 0, cliente: 0 };
+const EXTS = ["glb", "fbx", "obj"] as const;
 
 const SKIN = "#c89a7c";
 
@@ -24,7 +30,6 @@ function mat(color: string, extra: THREE.MeshStandardMaterialParameters = {}) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.02, ...extra });
 }
 
-/** Cor por nome (de material usemtl ou do objeto). */
 function paint(role: AvatarRole, name: string): THREE.MeshStandardMaterial {
   const n = (name || "").toLowerCase();
   if (n.includes("eye")) return mat("#f3f1ea", { roughness: 0.25 });
@@ -39,36 +44,72 @@ function paint(role: AvatarRole, name: string): THREE.MeshStandardMaterial {
   if (n.includes("yellow")) return mat("#d8b24a");
   if (n.includes("white")) return mat("#ece9e1");
   if (n.includes("part")) return mat("#3b5b8c");
-  // head, leg, body, face, hand, arm, skin… → pele
   return mat(SKIN, { roughness: 0.62 });
 }
 
-function applyMaterials(role: AvatarRole, obj: THREE.Object3D) {
+// Sombras + recolore peças SEM textura (OBJ e FBX do Mixamo vêm sem material
+// útil). Materiais COM textura (ex.: glb pronto) são preservados. Funciona em
+// SkinnedMesh (skinning é automático no three atual).
+function dressUp(role: AvatarRole, obj: THREE.Object3D) {
+  const fix = (mm: any, fallbackName: string) => (mm && mm.map ? mm : paint(role, mm?.name || fallbackName));
   obj.traverse((o) => {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
     m.castShadow = true;
     m.receiveShadow = true;
-    if (Array.isArray(m.material)) {
-      m.material = m.material.map((mm) => paint(role, (mm as any)?.name || m.name));
-    } else {
-      m.material = paint(role, (m.material as any)?.name || m.name);
-    }
+    if (Array.isArray(m.material)) m.material = m.material.map((mm) => fix(mm, m.name));
+    else m.material = fix(m.material, m.name);
   });
 }
 
-const cache = new Map<AvatarRole, Promise<THREE.Object3D>>();
+// Remove o deslocamento horizontal da animação (vira "andar no lugar"), caso o
+// clipe do Mixamo não tenha sido exportado como In Place.
+function stripRootMotion(clip: THREE.AnimationClip) {
+  for (const t of clip.tracks) {
+    if (/hips?\.position$/i.test(t.name)) {
+      for (let i = 0; i < t.values.length; i += 3) {
+        t.values[i] = 0;
+        t.values[i + 2] = 0;
+      }
+    }
+  }
+}
 
-async function build(role: AvatarRole): Promise<THREE.Object3D> {
+interface RawModel {
+  scene: THREE.Object3D;
+  animations: THREE.AnimationClip[];
+}
+
+async function urlExists(url: string): Promise<boolean> {
+  try {
+    const r = await fetch(url, { method: "HEAD" });
+    const ct = r.headers.get("content-type") || "";
+    return r.ok && !ct.includes("text/html"); // evita o fallback SPA (index.html)
+  } catch {
+    return false;
+  }
+}
+
+async function loadByExt(url: string, ext: string): Promise<RawModel> {
+  if (ext === "glb" || ext === "gltf") {
+    const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
+    const g = await new Promise<any>((res, rej) => new GLTFLoader().load(url, res, undefined, rej));
+    return { scene: g.scene, animations: g.animations || [] };
+  }
+  if (ext === "fbx") {
+    const { FBXLoader } = await import("three/examples/jsm/loaders/FBXLoader.js");
+    const g = await new Promise<any>((res, rej) => new FBXLoader().load(url, res, undefined, rej));
+    return { scene: g, animations: g.animations || [] };
+  }
   const { OBJLoader } = await import("three/examples/jsm/loaders/OBJLoader.js");
-  const obj = await new Promise<THREE.Group>((resolve, reject) =>
-    new OBJLoader().load(URL[role], resolve, undefined, reject)
-  );
-  applyMaterials(role, obj);
+  const o = await new Promise<THREE.Group>((res, rej) => new OBJLoader().load(url, res, undefined, rej));
+  return { scene: o, animations: [] };
+}
+
+/** Normaliza altura, apoia base em y=0, centraliza em x/z e aplica o facing. */
+function normalize(role: AvatarRole, obj: THREE.Object3D) {
   obj.rotation.y = FACE[role];
   obj.updateMatrixWorld(true);
-
-  // normaliza altura, apoia a base em y=0 e centraliza em x/z
   let box = new THREE.Box3().setFromObject(obj);
   const size = new THREE.Vector3();
   box.getSize(size);
@@ -80,12 +121,94 @@ async function build(role: AvatarRole): Promise<THREE.Object3D> {
   obj.position.x -= center.x;
   obj.position.z -= center.z;
   obj.position.y -= box.min.y;
-  return obj;
 }
 
-/** Devolve uma instância (clone) do modelo do papel; geometria compartilhada. */
-export async function getAvatarModel(role: AvatarRole): Promise<THREE.Object3D> {
+const cache = new Map<AvatarRole, Promise<RawModel & { rigged: boolean }>>();
+
+async function build(role: AvatarRole): Promise<RawModel & { rigged: boolean }> {
+  let chosen: { url: string; ext: string } | null = null;
+  for (const ext of EXTS) {
+    const url = `/models/${role}.${ext}`;
+    // .obj sempre existe (fallback); para glb/fbx confere antes p/ não poluir o console
+    if (ext === "obj" || (await urlExists(url))) {
+      chosen = { url, ext };
+      break;
+    }
+  }
+  if (!chosen) chosen = { url: `/models/${role}.obj`, ext: "obj" };
+
+  const raw = await loadByExt(chosen.url, chosen.ext);
+  dressUp(role, raw.scene);
+
+  // clipe principal do arquivo = "walk"; tenta anexar um "idle" separado
+  // (ex.: /models/arquiteto-idle.fbx) cujo esqueleto bate por nome de osso.
+  const animations: THREE.AnimationClip[] = raw.animations.map((a) => {
+    a.name = "walk";
+    return a;
+  });
+  if (chosen.ext !== "obj") {
+    const idleUrl = `/models/${role}-idle.fbx`;
+    if (await urlExists(idleUrl)) {
+      try {
+        const idleRaw = await loadByExt(idleUrl, "fbx");
+        const idleClip = idleRaw.animations[0];
+        if (idleClip) {
+          idleClip.name = "idle";
+          animations.push(idleClip);
+        }
+      } catch {
+        /* sem idle separado: cai para o walk */
+      }
+    }
+  }
+  animations.forEach(stripRootMotion);
+  const rigged = chosen.ext !== "obj" && animations.length > 0;
+
+  // embrulha num grupo para a normalização não conflitar com a animação do root
+  const wrapper = new THREE.Group();
+  wrapper.add(raw.scene);
+  normalize(role, wrapper);
+
+  return { scene: wrapper, animations, rigged };
+}
+
+export interface AvatarInstance {
+  object: THREE.Object3D;
+  mixer: THREE.AnimationMixer | null;
+  idle: THREE.AnimationAction | null;
+  walk: THREE.AnimationAction | null;
+}
+
+function pickClips(animations: THREE.AnimationClip[]) {
+  const find = (re: RegExp) => animations.find((a) => re.test(a.name));
+  const idle = find(/idle|parad|stand|breath|respir/i) || animations[0] || null;
+  const walk = find(/walk|run|andar|correr|move|caminh/i) || animations[0] || null;
+  return { idle, walk };
+}
+
+/** Instância (clone) do avatar do papel + mixer/ações quando há esqueleto. */
+export async function getAvatarModel(role: AvatarRole): Promise<AvatarInstance> {
   if (!cache.has(role)) cache.set(role, build(role));
   const base = await cache.get(role)!;
-  return base.clone(true);
+
+  let object: THREE.Object3D;
+  if (base.rigged) {
+    const { clone } = await import("three/examples/jsm/utils/SkeletonUtils.js");
+    object = clone(base.scene);
+  } else {
+    object = base.scene.clone(true);
+  }
+
+  if (!base.rigged || base.animations.length === 0) {
+    return { object, mixer: null, idle: null, walk: null };
+  }
+
+  const mixer = new THREE.AnimationMixer(object);
+  const { idle, walk } = pickClips(base.animations);
+  return {
+    object,
+    mixer,
+    idle: idle ? mixer.clipAction(idle) : null,
+    walk: walk ? mixer.clipAction(walk) : null,
+  };
 }

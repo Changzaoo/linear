@@ -4,6 +4,7 @@ import { OrbitControls, PointerLockControls, Grid } from "@react-three/drei";
 import * as THREE from "three";
 import FurnitureMesh from "./FurnitureMesh";
 import Avatar from "./Avatar";
+import { SceneEnvironment } from "../../shared3d";
 import { fpInput } from "./fpInput";
 import {
   actions,
@@ -321,7 +322,7 @@ function CameraRig({
   useFrame((state, dt) => {
     let isMoving = false;
     if (mode === "terceira") {
-      const speed = (fpInput.sprint ? 3.2 : 1.8) * dt;
+      const speed = 1.8 * dt;
       const turn = 2.35 * dt;
       avatarPos.current.ry -= fpInput.strafe * turn;
       if (fpInput.forward) {
@@ -353,7 +354,7 @@ function CameraRig({
       fpInput.lookDX = 0;
       fpInput.lookDY = 0;
     }
-    const speed = (fpInput.sprint ? 3.4 : 1.7) * dt;
+    const speed = 1.7 * dt;
     if (fpInput.forward || fpInput.strafe) {
       const dir = new THREE.Vector3();
       camera.getWorldDirection(dir);
@@ -407,12 +408,10 @@ function useFpKeyboard(active: boolean) {
       if (e.key === "s" || e.key === "S" || e.key === "ArrowDown") fpInput.forward = -1;
       if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") fpInput.strafe = -1;
       if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") fpInput.strafe = 1;
-      if (e.key === "Shift") fpInput.sprint = true;
     };
     const up = (e: KeyboardEvent) => {
       if (["w", "W", "ArrowUp", "s", "S", "ArrowDown"].includes(e.key)) fpInput.forward = 0;
       if (["a", "A", "ArrowLeft", "d", "D", "ArrowRight"].includes(e.key)) fpInput.strafe = 0;
-      if (e.key === "Shift") fpInput.sprint = false;
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -421,7 +420,6 @@ function useFpKeyboard(active: boolean) {
       window.removeEventListener("keyup", up);
       fpInput.forward = 0;
       fpInput.strafe = 0;
-      fpInput.sprint = false;
     };
   }, [active]);
 }
@@ -517,23 +515,8 @@ function SceneContents({ mobile }: { mobile: boolean }) {
 
   return (
     <>
-      <color attach="background" args={["#0c0a08"]} />
-      <fog attach="fog" args={["#0c0a08", Math.max(env.width, env.depth) / 100, (Math.max(env.width, env.depth) / 100) * 4.5]} />
-      <ambientLight intensity={0.6} color="#f4e8d4" />
-      <hemisphereLight args={["#cdbfa6", "#1a1510", 0.5]} />
-      <directionalLight
-        position={[6, 9, 4]}
-        intensity={1.2}
-        color="#ffe9c8"
-        castShadow={!mobile}
-        shadow-mapSize-width={mobile ? 512 : 1536}
-        shadow-mapSize-height={mobile ? 512 : 1536}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
-        shadow-bias={-0.0004}
-      />
+      {/* Ambiente de render ÚNICO (fonte: shared3d) — idêntico no site e no CRM */}
+      <SceneEnvironment maxDim={Math.max(env.width, env.depth) / 100} mobile={mobile} />
       <CameraRig mode={viewMode} env={env} mobile={mobile} activeFloor={activeFloor} role={role} name={clientName || "Cliente"} />
       <Capturer />
 

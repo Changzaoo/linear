@@ -51,7 +51,10 @@ function paint(role: AvatarRole, name: string): THREE.MeshStandardMaterial {
 // útil). Materiais COM textura (ex.: glb pronto) são preservados. Funciona em
 // SkinnedMesh (skinning é automático no three atual).
 function dressUp(role: AvatarRole, obj: THREE.Object3D) {
-  const fix = (mm: any, fallbackName: string) => (mm && mm.map ? mm : paint(role, mm?.name || fallbackName));
+  // Considera o nome do NÓ (Char_Tshirt, Parts, Hair_Base…) E do material —
+  // o nome da malha é quem carrega a "parte" do corpo nos FBX do Mixamo.
+  const fix = (mm: any, meshName: string) =>
+    mm && mm.map ? mm : paint(role, `${meshName} ${mm?.name || ""}`);
   obj.traverse((o) => {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
@@ -70,6 +73,22 @@ function stripRootMotion(clip: THREE.AnimationClip) {
       for (let i = 0; i < t.values.length; i += 3) {
         t.values[i] = 0;
         t.values[i + 2] = 0;
+      }
+    }
+  }
+}
+
+// Neutraliza a rotação do quadril (clipes de virada): mantém o jogo de pernas/
+// braços da virada, mas sem girar o corpo — quem gira é o controlador (ry),
+// evitando rotação dobrada.
+function stripRootRotation(clip: THREE.AnimationClip) {
+  for (const t of clip.tracks) {
+    if (/hips?\.quaternion$/i.test(t.name)) {
+      for (let i = 0; i < t.values.length; i += 4) {
+        t.values[i] = 0;
+        t.values[i + 1] = 0;
+        t.values[i + 2] = 0;
+        t.values[i + 3] = 1;
       }
     }
   }
@@ -146,18 +165,27 @@ async function build(role: AvatarRole): Promise<RawModel & { rigged: boolean }> 
     a.name = "walk";
     return a;
   });
+  // Anexa clipes extras (mesmo rig Mixamo) a partir de arquivos separados:
+  // <papel>-idle.fbx, <papel>-left.fbx (virar à esquerda), <papel>-right.fbx.
   if (chosen.ext !== "obj") {
-    const idleUrl = `/models/${role}-idle.fbx`;
-    if (await urlExists(idleUrl)) {
+    const extras = [
+      { suffix: "idle", name: "idle", stripRot: false },
+      { suffix: "left", name: "turnLeft", stripRot: true },
+      { suffix: "right", name: "turnRight", stripRot: true },
+    ];
+    for (const ex of extras) {
+      const url = `/models/${role}-${ex.suffix}.fbx`;
+      if (!(await urlExists(url))) continue;
       try {
-        const idleRaw = await loadByExt(idleUrl, "fbx");
-        const idleClip = idleRaw.animations[0];
-        if (idleClip) {
-          idleClip.name = "idle";
-          animations.push(idleClip);
+        const extra = await loadByExt(url, "fbx");
+        const clip = extra.animations[0];
+        if (clip) {
+          clip.name = ex.name;
+          if (ex.stripRot) stripRootRotation(clip);
+          animations.push(clip);
         }
       } catch {
-        /* sem idle separado: cai para o walk */
+        /* ignora clipe extra ausente/inválido */
       }
     }
   }
@@ -177,13 +205,17 @@ export interface AvatarInstance {
   mixer: THREE.AnimationMixer | null;
   idle: THREE.AnimationAction | null;
   walk: THREE.AnimationAction | null;
+  turnLeft: THREE.AnimationAction | null;
+  turnRight: THREE.AnimationAction | null;
 }
 
 function pickClips(animations: THREE.AnimationClip[]) {
   const find = (re: RegExp) => animations.find((a) => re.test(a.name));
   const idle = find(/idle|parad|stand|breath|respir/i) || animations[0] || null;
-  const walk = find(/walk|run|andar|correr|move|caminh/i) || animations[0] || null;
-  return { idle, walk };
+  const walk = find(/^walk$|walking|run|andar|caminh/i) || animations[0] || null;
+  const turnLeft = find(/turnleft|left/i) || null;
+  const turnRight = find(/turnright|right/i) || null;
+  return { idle, walk, turnLeft, turnRight };
 }
 
 /** Instância (clone) do avatar do papel + mixer/ações quando há esqueleto. */
@@ -200,15 +232,11 @@ export async function getAvatarModel(role: AvatarRole): Promise<AvatarInstance> 
   }
 
   if (!base.rigged || base.animations.length === 0) {
-    return { object, mixer: null, idle: null, walk: null };
+    return { object, mixer: null, idle: null, walk: null, turnLeft: null, turnRight: null };
   }
 
   const mixer = new THREE.AnimationMixer(object);
-  const { idle, walk } = pickClips(base.animations);
-  return {
-    object,
-    mixer,
-    idle: idle ? mixer.clipAction(idle) : null,
-    walk: walk ? mixer.clipAction(walk) : null,
-  };
+  const { idle, walk, turnLeft, turnRight } = pickClips(base.animations);
+  const act = (c: THREE.AnimationClip | null) => (c ? mixer.clipAction(c) : null);
+  return { object, mixer, idle: act(idle), walk: act(walk), turnLeft: act(turnLeft), turnRight: act(turnRight) };
 }

@@ -40,7 +40,7 @@ const STEPS: Step[] = [
   {
     icon: "🚶",
     title: "Andar e olhar",
-    body: "Na 1ª e 3ª pessoa, use W A S D (ou as setas) para mover e Shift para correr. Uma mira em pontinho aparece no centro da tela.",
+    body: "Na 1ª e 3ª pessoa, use W A S D (ou as setas) para mover. Uma mira em pontinho aparece no centro da tela.",
     tips: [
       "Na 1ª pessoa o mouse controla o olhar e fica oculto",
       "Pressione ESC para liberar o cursor do mouse",

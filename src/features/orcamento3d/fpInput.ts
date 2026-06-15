@@ -4,7 +4,6 @@
 export const fpInput = {
   forward: 0, // -1..1
   strafe: 0, // -1..1
-  sprint: false,
   lookDX: 0, // delta de olhar (mobile), consumido por frame
   lookDY: 0,
 };
@@ -12,7 +11,6 @@ export const fpInput = {
 export function resetFpInput() {
   fpInput.forward = 0;
   fpInput.strafe = 0;
-  fpInput.sprint = false;
   fpInput.lookDX = 0;
   fpInput.lookDY = 0;
 }

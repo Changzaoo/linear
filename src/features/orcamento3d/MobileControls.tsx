@@ -5,7 +5,7 @@ import type { Orientation } from "../../lib/useDeviceInfo";
 
 /* Controles touch para 1ª/3ª pessoa no mobile — adaptados a retrato e
    paisagem: joystick de movimento (esq.), área de olhar (1ª pessoa, dir.)
-   e botão Correr. Tamanhos e posições mudam conforme a orientação. */
+   Tamanhos e posições mudam conforme a orientação. */
 export default function MobileControls({ orientation }: { orientation: Orientation }) {
   const mode = useOrc3d((s) => s.viewMode);
   const knobRef = useRef<HTMLDivElement>(null);
@@ -54,7 +54,6 @@ export default function MobileControls({ orientation }: { orientation: Orientati
 
   // posições por orientação (acima da fileira de FABs no canto inferior)
   const joyPos = land ? "bottom-16 left-4" : "bottom-28 left-5";
-  const sprintPos = land ? "bottom-16 left-32" : "bottom-[13rem] left-7";
 
   return (
     <div className="pointer-events-none fixed inset-0 z-30 select-none">
@@ -94,16 +93,6 @@ export default function MobileControls({ orientation }: { orientation: Orientati
           onPointerCancel={() => { lookId.current = null; lookLast.current = null; }}
         />
       )}
-
-      {/* correr */}
-      <button
-        className={`pointer-events-auto absolute ${sprintPos} rounded-full border border-champagne/30 bg-[rgba(18,16,14,0.6)] px-4 py-2 text-xs text-champagne backdrop-blur-sm active:bg-champagne/20`}
-        onPointerDown={() => (fpInput.sprint = true)}
-        onPointerUp={() => (fpInput.sprint = false)}
-        onPointerLeave={() => (fpInput.sprint = false)}
-      >
-        Correr
-      </button>
 
       {/* dica para iso/topo não aparece aqui (só modos a pé) */}
     </div>

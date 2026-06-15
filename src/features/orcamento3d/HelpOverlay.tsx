@@ -39,15 +39,15 @@ export default function HelpOverlay() {
       ? {
           title: "Andar (1ª pessoa)",
           items: mobile
-            ? ["Joystick à esquerda para mover", "Arraste no lado direito para olhar", "Botão Correr para acelerar"]
-            : ["W A S D para mover", "Mouse para olhar (clique para travar)", "Shift para correr", "ESC libera o mouse"],
+            ? ["Joystick à esquerda para mover", "Arraste no lado direito para olhar"]
+            : ["W A S D para mover", "Mouse para olhar (clique para travar)", "ESC libera o mouse"],
         }
       : mode === "terceira"
       ? {
           title: "Andar (3ª pessoa)",
           items: mobile
-            ? ["Joystick à esquerda para andar e girar", "Botão Correr para acelerar", "Use o seletor de andares para trocar de pavimento"]
-            : ["W/S andam, A/D giram", "Shift para correr", "Use o seletor de andares para trocar de pavimento"],
+            ? ["Joystick à esquerda para andar e girar", "Use o seletor de andares para trocar de pavimento"]
+            : ["W/S andam, A/D giram", "Use o seletor de andares para trocar de pavimento"],
         }
       : {
           title: mode === "topo" ? "Vista superior" : "Organizar (isométrico)",

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Html } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
+import { Euler, Quaternion } from "three";
 import type { Group, AnimationAction, AnimationMixer } from "three";
 import { getAvatarModel, type AvatarInstance } from "./avatarModel";
 
@@ -9,6 +10,14 @@ type Role = "cliente" | "arquiteto";
 function shortName(name?: string) {
   if (!name) return "";
   return name.trim().split(/\s+/).slice(0, 2).join(" ");
+}
+
+const TMP_Q = new Quaternion();
+const TMP_E = new Euler();
+function wrap(a: number) {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
 }
 
 export default function Avatar({
@@ -22,10 +31,14 @@ export default function Avatar({
   moving?: boolean;
   label?: boolean;
 }) {
+  const outer = useRef<Group>(null);
   const rig = useRef<Group>(null);
   const [inst, setInst] = useState<AvatarInstance | null>(null);
   const mixerRef = useRef<AnimationMixer | null>(null);
-  const currentAction = useRef<AnimationAction | null>(null);
+  const current = useRef<AnimationAction | null>(null);
+  const prevYaw = useRef<number | null>(null);
+  const turnHold = useRef(0);
+  const turnDir = useRef(0);
 
   useEffect(() => {
     let alive = true;
@@ -36,7 +49,7 @@ export default function Avatar({
         mixerRef.current = a.mixer;
         if (a.idle) {
           a.idle.play();
-          currentAction.current = a.idle;
+          current.current = a.idle;
         }
       })
       .catch(() => {});
@@ -49,16 +62,41 @@ export default function Avatar({
   useFrame((state, delta) => {
     const mixer = mixerRef.current;
     if (mixer && inst) {
-      // animação esquelética real (modelo riggado) — alterna idle/andar
       mixer.update(delta);
-      const want = moving ? inst.walk : inst.idle;
-      if (want && currentAction.current !== want) {
-        currentAction.current?.fadeOut(0.25);
-        want.reset().fadeIn(0.25).play();
-        currentAction.current = want;
+
+      // detecta giro pela variação do yaw no mundo (vale p/ local e remoto)
+      let turning = 0;
+      if (outer.current) {
+        outer.current.getWorldQuaternion(TMP_Q);
+        const yaw = TMP_E.setFromQuaternion(TMP_Q, "YXZ").y;
+        if (prevYaw.current !== null && delta > 0) {
+          const speed = wrap(yaw - prevYaw.current) / delta; // rad/s
+          if (Math.abs(speed) > 0.6) {
+            turnDir.current = speed < 0 ? -1 : 1;
+            turnHold.current = 0.25;
+          }
+        }
+        prevYaw.current = yaw;
+      }
+      if (turnHold.current > 0) turnHold.current -= delta;
+      if (!moving && turnHold.current > 0) turning = turnDir.current;
+
+      // escolhe a ação: andar > virar > parado
+      let want: AnimationAction | null = null;
+      if (moving) want = inst.walk;
+      else if (turning < 0 && inst.turnLeft) want = inst.turnLeft;
+      else if (turning > 0 && inst.turnRight) want = inst.turnRight;
+      else want = inst.idle;
+      want = want || inst.idle || inst.walk;
+
+      if (want && current.current !== want) {
+        current.current?.fadeOut(0.2);
+        want.reset().fadeIn(0.2).play();
+        current.current = want;
       }
       return;
     }
+
     // sem esqueleto: animação procedural no corpo inteiro
     if (!rig.current) return;
     const t = state.clock.elapsedTime;
@@ -75,7 +113,7 @@ export default function Avatar({
   });
 
   return (
-    <group>
+    <group ref={outer}>
       {/* sombra de contato */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
         <circleGeometry args={[0.34, 28]} />

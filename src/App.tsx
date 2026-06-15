@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import AuthoritySection from "./components/AuthoritySection";
@@ -51,6 +51,15 @@ export default function App() {
     if (hash.startsWith("#/orcamento-3d") || hash.startsWith("#orcamento-3d")) openStudio();
   }, [hash]);
 
+  // Ao sair do CRM (voltar para o site), rola de volta para o topo.
+  const wasCrm = useRef(isCrm);
+  useEffect(() => {
+    if (wasCrm.current && !isCrm) {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
+    wasCrm.current = isCrm;
+  }, [isCrm]);
+
   return (
     <>
       {isCrm ? (
@@ -58,6 +67,10 @@ export default function App() {
           <Atendimentos3DPage />
         </Suspense>
       ) : (
+        // Enquanto o estúdio 3D está aberto, escondemos a landing page inteira:
+        // assim a tela antiga com os objetos 3D some, para de rolar e os canvases
+        // WebGL deixam de renderizar (não ficam atrás do editor consumindo GPU).
+        !studioOpen && (
         <>
           <Header />
           <main>
@@ -76,6 +89,7 @@ export default function App() {
           <Footer />
           <WhatsAppButton />
         </>
+        )
       )}
 
       {/* Modal "Solicitar proposta" — abre de qualquer CTA do site e

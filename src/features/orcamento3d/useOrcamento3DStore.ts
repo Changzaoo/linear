@@ -181,6 +181,15 @@ export const actions = {
     if (orc3dStore.getState().activeFloor > floorMax) orc3dStore.setState({ activeFloor: floorMax });
   },
 
+  /** Altura das paredes / pé-direito (cm), com limites de sanidade. */
+  setWallHeight(cm: number) {
+    const [lo, hi] = ENV_LIMITS.height;
+    const height = Math.round(Math.max(lo, Math.min(hi, cm)));
+    commitDoc((d) => {
+      d.environment = { ...d.environment, height };
+    }, false);
+  },
+
   enterEditor() {
     orc3dStore.setState({ phase: "editing" });
   },
@@ -327,6 +336,13 @@ export const actions = {
 
   beginDrag() {
     pushHistory();
+  },
+
+  /** Move a escada (centro em metros). Sem histórico — usado durante o arraste. */
+  setStairs(x: number, z: number) {
+    commitDoc((d) => {
+      d.environment = { ...d.environment, stairsX: x, stairsZ: z };
+    }, false);
   },
 
   rotate(uidSel: string, deltaRad: number) {
@@ -536,8 +552,14 @@ export const actions = {
     applyingRemote = false;
   },
 
-  /** Carrega um projeto existente (ex.: arquiteto abrindo pelo CRM). */
-  loadProject(project: import("./types").Project3D, attendanceId?: string, architectName?: string) {
+  /** Carrega um projeto existente (ex.: arquiteto abrindo pelo CRM, ou cliente
+      retomando um projeto pela URL). `role` define quem está abrindo. */
+  loadProject(
+    project: import("./types").Project3D,
+    attendanceId?: string,
+    architectName?: string,
+    role: "cliente" | "arquiteto" = "arquiteto"
+  ) {
     orc3dStore.setState({
       phase: "editing",
       projectId: project.id,
@@ -552,7 +574,7 @@ export const actions = {
       assistedByArchitect: project.assistedByArchitect,
       attendanceId,
       thumbnail: project.thumbnail,
-      role: "arquiteto",
+      role,
       activeFloor: 0,
       wallMode: "cut",
       floorVisibility: "currentAndBelow",

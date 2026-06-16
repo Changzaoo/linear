@@ -7,7 +7,7 @@
 export const siteData = {
   brand: {
     // EDITE AQUI: nome da marcenaria
-    name: "LINEAR",
+    name: "NEXUS",
     tagline: "Marcenaria",
     specialty:
       "Engenharia em madeira e mobiliário sob medida para operações comerciais de alto padrão.",

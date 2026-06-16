@@ -98,7 +98,7 @@ export default function Atendimentos3DPage() {
       <header className="border-b border-champagne/10 px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-widest2 text-champagne/80">LINEAR · CRM</p>
+            <p className="text-[11px] uppercase tracking-widest2 text-champagne/80">NEXUS · CRM</p>
             <h1 className="font-display text-2xl text-text">Suporte 3D / Arquiteto</h1>
           </div>
           <div className="flex items-center gap-4">

@@ -25,7 +25,7 @@ const NEXT_STATUS: { status: ProjectStatus; label: string }[] = [
 
 const whatsappUrl = (phone: string, name: string) => {
   const clean = phone.replace(/\D/g, "");
-  const msg = `Olá ${name || ""}, vi seu projeto no Estúdio 3D da LINEAR e posso te ajudar com a análise.`;
+  const msg = `Olá ${name || ""}, vi seu projeto no Estúdio 3D da NEXUS e posso te ajudar com a análise.`;
   return `https://wa.me/${clean}?text=${encodeURIComponent(msg)}`;
 };
 

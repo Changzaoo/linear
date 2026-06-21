@@ -11,7 +11,9 @@ export default {
         wood: "#5A3825",
         bronze: "#9C7248",
         text: "#F4EFE7",
-        muted: "#A79D91",
+        // Clareado de #A79D91 → #B8AEA0 para passar WCAG AA em texto pequeno
+        // sobre o fundo escuro (#080706) sem destoar do design.
+        muted: "#B8AEA0",
       },
       fontFamily: {
         sans: ["Manrope", "Inter", "system-ui", "sans-serif"],

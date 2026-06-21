@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A landing é uma single-page com navegação por âncoras/hash.
+  Rotas hash (#/orcamento-3d, #/crm, #capacidades, #portfolio etc.) NÃO são
+  indexáveis individualmente pelos buscadores, então listamos apenas a raiz.
+  Rotas hash principais (referência):
+    https://marcenaria.nexusholding.xyz/#inicio
+    https://marcenaria.nexusholding.xyz/#capacidades
+    https://marcenaria.nexusholding.xyz/#portfolio
+    https://marcenaria.nexusholding.xyz/#/orcamento-3d
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://marcenaria.nexusholding.xyz/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

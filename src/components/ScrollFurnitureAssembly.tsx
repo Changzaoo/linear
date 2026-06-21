@@ -2097,7 +2097,12 @@ export default function ScrollFurnitureAssembly({ progress }: Props) {
   return (
     // pointer-events-none: o canvas é decorativo — toques e gestos de
     // scroll atravessam direto para a página (essencial no mobile).
-    <div ref={wrapRef} className="pointer-events-none absolute inset-0">
+    <div
+      ref={wrapRef}
+      role="img"
+      aria-label="Cena 3D interativa montando um ambiente comercial sob medida da NEXUS conforme você rola a página."
+      className="pointer-events-none absolute inset-0"
+    >
       <Canvas
         frameloop={inView ? "always" : "never"}
         shadows={!mobile}

@@ -5,41 +5,20 @@
    Fluxo: o formulário POSTa em /public/solicitar-proposta no CRM,
    que grava o lead (persistente). Quando o time abre o Funil
    comercial, o lead é sincronizado para a coluna "Lead".
+
+   Base da API, endpoints e tipos vêm do contrato compartilhado
+   (src/shared/contract.ts) — fonte única landing ↔ CRM.
    ============================================================ */
 import { createStore, useStore } from "./tinyStore";
+import { CRM_ENDPOINTS, crmFetch, type ProposalForm } from "../shared/contract";
 
-export interface ProposalForm {
-  nome: string;
-  email: string;
-  whatsapp: string;
-  cidade_estado: string;
-  tipo_projeto: string;
-  mensagem: string;
-  aceite: boolean;
-}
-
-const CRM_API_BASE = (
-  import.meta.env.VITE_CRM_API_BASE_URL?.trim() || "https://crm-marcenaria.vercel.app/api"
-).replace(/\/+$/, "");
+export type { ProposalForm } from "../shared/contract";
 
 export async function solicitarProposta(form: ProposalForm): Promise<{ leadId: string }> {
-  const res = await fetch(`${CRM_API_BASE}/public/solicitar-proposta`, {
+  return crmFetch<{ leadId: string }>(CRM_ENDPOINTS.solicitarProposta, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(form),
   });
-  const text = await res.text();
-  let data: any = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-  if (!res.ok) {
-    const msg = (data && (data.erro || data.error)) || `O servidor retornou ${res.status}`;
-    throw new Error(typeof msg === "string" ? msg : "Falha ao enviar sua solicitação.");
-  }
-  return data;
 }
 
 /* ---------- portão do modal (abre de qualquer CTA do site) ---------- */

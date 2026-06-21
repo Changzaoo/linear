@@ -406,7 +406,11 @@ export default function ExplodedCounter3D() {
     <section ref={containerRef} className="relative h-[300vh]">
       <div className="sticky top-0 flex h-svh items-center overflow-hidden">
         {/* Canvas 3D */}
-        <div className="absolute inset-0">
+        <div
+          className="absolute inset-0"
+          role="img"
+          aria-label="Animação 3D de um balcão de marcenaria NEXUS que se separa em camadas e remonta, revelando a construção sob medida."
+        >
           {supportsWebGL() ? (
             <Canvas
               frameloop={inView ? "always" : "never"}

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, MotionValue, useMotionValueEvent } from "framer-motion";
 import { isMobileViewport } from "../../lib/webgl";
 import { openStudio } from "./useOrcamento3DStore";
+import { track } from "../../lib/analytics";
 
 /* ============================================================
    Orcamento3DEntry — chamada premium que surge quando a primeira
@@ -23,18 +24,23 @@ export default function Orcamento3DEntry({ progress }: Props) {
     setReady((prev) => (prev === next ? prev : next));
   });
 
+  const openStudioTracked = useCallback((source: string) => {
+    track("studio_open", { source });
+    openStudio();
+  }, []);
+
   // ENTER abre o estúdio no desktop
   useEffect(() => {
     if (!ready || mobile) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Enter" && !e.repeat) {
         e.preventDefault();
-        openStudio();
+        openStudioTracked("hero-enter");
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [ready, mobile]);
+  }, [ready, mobile, openStudioTracked]);
 
   return (
     <AnimatePresence>
@@ -51,7 +57,7 @@ export default function Orcamento3DEntry({ progress }: Props) {
             {mobile ? (
               <button
                 type="button"
-                onClick={openStudio}
+                onClick={() => openStudioTracked("hero-mobile")}
                 className="rounded-full border border-champagne/50 bg-surface/90 px-8 py-4 text-lg font-semibold tracking-wide text-champagne shadow-card backdrop-blur-md"
               >
                 Iniciar orçamento 3D
@@ -59,7 +65,7 @@ export default function Orcamento3DEntry({ progress }: Props) {
             ) : (
               <motion.button
                 type="button"
-                onClick={openStudio}
+                onClick={() => openStudioTracked("hero-desktop")}
                 animate={{ opacity: [0.78, 1, 0.78] }}
                 transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
                 className="mt-4 inline-flex items-center gap-2 rounded-full border border-champagne/40 bg-surface/80 px-6 py-3.5 text-lg font-medium text-text shadow-card backdrop-blur-md transition hover:border-champagne/70 hover:bg-surface/90"

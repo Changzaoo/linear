@@ -1,4 +1,4 @@
-# LINEAR — Marcenaria
+# NEXUS — Marcenaria
 
 Landing page institucional premium para marcenaria de alto padrão focada em grandes projetos comerciais (lojas, franquias, escritórios, clínicas, hotéis, construtoras).
 

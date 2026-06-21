@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#080706" />
 
     <!-- SEO -->
-    <title>Nexus Marcenaria de Alto Padrão | Grandes Projetos</title>
+    <title>NEXUS Marcenaria de Alto Padrão | Grandes Projetos</title>
     <meta
       name="description"
       content="Mobiliário sob medida para lojas, franquias, escritórios, clínicas, hotéis e projetos comerciais de grande escala. Do projeto executivo à instalação."
@@ -15,19 +15,82 @@
       name="keywords"
       content="marcenaria comercial, móveis sob medida, loja planejada, mobiliário comercial, móveis para franquias, balcões comerciais, marcenaria para lojas, painéis ripados, mobiliário para hotéis"
     />
+    <meta name="author" content="NEXUS Marcenaria" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://marcenaria.nexusholding.xyz/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Nexus Marcenaria de Alto Padrão | Grandes Projetos" />
+    <meta property="og:site_name" content="NEXUS" />
+    <meta property="og:url" content="https://marcenaria.nexusholding.xyz/" />
+    <meta property="og:title" content="NEXUS Marcenaria de Alto Padrão | Grandes Projetos" />
     <meta
       property="og:description"
       content="Mobiliário sob medida para lojas, franquias, escritórios, clínicas, hotéis e projetos comerciais de grande escala."
     />
     <!-- Substitua pelo caminho real da imagem OG quando disponível -->
-    <meta property="og:image" content="/og-image.jpg" />
+    <meta property="og:image" content="https://marcenaria.nexusholding.xyz/og-image.jpg" />
     <meta property="og:locale" content="pt_BR" />
 
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="NEXUS Marcenaria de Alto Padrão | Grandes Projetos" />
+    <meta
+      name="twitter:description"
+      content="Mobiliário sob medida para lojas, franquias, escritórios, clínicas, hotéis e projetos comerciais de grande escala."
+    />
+    <!-- Substitua pelo caminho real da imagem OG quando disponível -->
+    <meta name="twitter:image" content="https://marcenaria.nexusholding.xyz/og-image.jpg" />
+
+    <!-- Dados estruturados (Schema.org) -->
+    <!-- TODO: dado real — substituir telephone e completar address (rua, cidade, CEP) com dados reais da NEXUS. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "HomeAndConstructionBusiness",
+        "name": "NEXUS Marcenaria",
+        "description": "Marcenaria de alto padrão especializada em mobiliário comercial sob medida para lojas, franquias, escritórios, clínicas e hotéis, com orçamento 3D online.",
+        "url": "https://marcenaria.nexusholding.xyz/",
+        "image": "https://marcenaria.nexusholding.xyz/og-image.jpg",
+        "telephone": "+55-00-00000-0000",
+        "priceRange": "$$$",
+        "areaServed": {
+          "@type": "Country",
+          "name": "Brasil"
+        },
+        "address": {
+          "@type": "PostalAddress",
+          "addressCountry": "BR"
+        },
+        "makesOffer": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Mobiliário comercial sob medida"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Orçamento 3D online"
+            }
+          }
+        ]
+      }
+    </script>
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!--
+      Analytics (Plausible, privacy-first) — DESATIVADO por padrão.
+      Para ativar: descomente a tag abaixo e defina VITE_ANALYTICS_DOMAIN
+      no .env com o mesmo domínio do data-domain. Nada de terceiros é
+      carregado sem isso. O util src/lib/analytics.ts faz no-op enquanto
+      window.plausible não existir.
+    -->
+    <!-- <script defer data-domain="marcenaria.nexusholding.xyz" src="https://plausible.io/js/script.js"></script> -->
 
     <!-- Tipografia premium -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

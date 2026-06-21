@@ -1,70 +1,22 @@
 import type { LeadForm, Project3D } from "./types";
 import { priceOf } from "./pricingEngine";
+import {
+  CRM_ENDPOINTS,
+  crmFetch,
+  type CrmEstimate,
+  type CrmProjectDoc,
+  type CrmLeadCreated,
+} from "../../shared/contract";
 
-type CrmEnvironment = {
-  largura: number;
-  comprimento: number;
-  peDireito: number;
-  tipo: string;
-  formato: "retangular" | "quadrado" | "L";
-  andares: number;
-  portas: number;
-  janelas: number;
-};
-
-type CrmFurniture = {
-  uid: string;
-  catalogId: string;
-  category: string;
-  name: string;
-  floor: number;
-  x: number;
-  z: number;
-  rotation: number;
-  width: number;
-  height: number;
-  depth: number;
-  material: string;
-  color: string;
-  locked: boolean;
-  /** preço estimado da peça (R$) — alimenta o resumo do funil */
-  preco: number;
-  /** modelo 3D importado (data URL) — quando presente, substitui a geometria */
-  modelUrl?: string;
-  modelFormat?: string;
-};
-
-/** Resumo financeiro/qualificação enviado junto ao doc — usado pelo
-    funil comercial do CRM (card do lead com valores e prioridade). */
-export type CrmEstimate = {
-  min: number;
-  max: number;
-  total: number;
-  complexity: string;
-  prazoDias: [number, number];
-  qtdMoveis: number;
-};
-
-export type CrmProjectDoc = {
-  environment: CrmEnvironment;
-  furniture: CrmFurniture[];
-  notes: string;
-  projectName: string;
-  /** estimativa de valores do projeto (opcional p/ compatibilidade) */
-  estimativa?: CrmEstimate;
-  /** classificação automática do lead (frio/morno/quente/projeto-grande) */
-  leadScore?: string;
-  /** status do projeto no momento do envio */
-  status?: string;
-};
-
-export type CrmLeadCreated = {
-  leadId: string;
-  projetoId: string;
-};
-
-const CRM_API_BASE =
-  (import.meta.env.VITE_CRM_API_BASE_URL?.trim() || "https://crm-marcenaria.vercel.app/api").replace(/\/+$/, "");
+/* Tipos canônicos centralizados em src/shared/contract.ts.
+   Re-exportados aqui para não quebrar imports existentes. */
+export type {
+  CrmEnvironment,
+  CrmFurniture,
+  CrmEstimate,
+  CrmProjectDoc,
+  CrmLeadCreated,
+} from "../../shared/contract";
 
 const MATERIAL_COLORS: Record<string, string> = {
   mdf_branco: "#f4f1e8",
@@ -99,35 +51,6 @@ function leadFromProject(project: Project3D): LeadForm {
     descricao: project.client.notes || project.name,
     aceite: project.client.contactConsent ?? true,
   };
-}
-
-function ensureOk(res: Response, data: unknown): void {
-  if (res.ok) return;
-  const errorData = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
-  const message =
-    (typeof errorData.erro === "string" && errorData.erro) ||
-    (typeof errorData.error === "string" && errorData.error) ||
-    `CRM retornou ${res.status}`;
-  throw Object.assign(new Error(message), { status: res.status, data });
-}
-
-async function crmFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${CRM_API_BASE}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init.headers || {}),
-    },
-  });
-  const text = await res.text();
-  let data: unknown = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-  ensureOk(res, data);
-  return data as T;
 }
 
 export function isCrmNotFound(error: unknown): boolean {
@@ -213,7 +136,7 @@ export function toCrmProjectDoc(project: Project3D): CrmProjectDoc {
 }
 
 export function createCrmLead(form: LeadForm, project: Project3D): Promise<CrmLeadCreated> {
-  return crmFetch<CrmLeadCreated>("/public/leads-3d", {
+  return crmFetch<CrmLeadCreated>(CRM_ENDPOINTS.leads3d, {
     method: "POST",
     body: JSON.stringify({ ...form, doc: toCrmProjectDoc(project) }),
   });
@@ -224,7 +147,7 @@ export function createCrmLeadFromProject(project: Project3D): Promise<CrmLeadCre
 }
 
 export function saveCrmProject(project: Project3D): Promise<unknown> {
-  return crmFetch(`/public/projetos-3d/${project.id}`, {
+  return crmFetch(CRM_ENDPOINTS.projeto(project.id), {
     method: "PUT",
     body: JSON.stringify({
       doc: toCrmProjectDoc(project),
@@ -235,14 +158,14 @@ export function saveCrmProject(project: Project3D): Promise<unknown> {
 }
 
 export function sendCrmProjectForAnalysis(project: Project3D): Promise<{ ok: boolean }> {
-  return crmFetch<{ ok: boolean }>(`/public/projetos-3d/${project.id}/enviar`, {
+  return crmFetch<{ ok: boolean }>(CRM_ENDPOINTS.enviar(project.id), {
     method: "POST",
     body: JSON.stringify({ doc: toCrmProjectDoc(project) }),
   });
 }
 
 export function callCrmArchitect(project: Project3D): Promise<{ ok: boolean }> {
-  return crmFetch<{ ok: boolean }>(`/public/projetos-3d/${project.id}/chamar-arquiteto`, {
+  return crmFetch<{ ok: boolean }>(CRM_ENDPOINTS.chamarArquiteto(project.id), {
     method: "POST",
     body: JSON.stringify({}),
   });

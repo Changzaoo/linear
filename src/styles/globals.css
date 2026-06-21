@@ -59,21 +59,41 @@ body {
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md bg-champagne px-7 py-4 text-sm font-bold uppercase tracking-wider text-background transition-all duration-300 hover:shadow-glow hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-champagne focus:ring-offset-2 focus:ring-offset-background;
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-champagne px-7 py-4 text-sm font-bold uppercase tracking-wider text-background transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-glow hover:brightness-110 active:translate-y-0 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-champagne focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-champagne/40 px-7 py-4 text-sm font-bold uppercase tracking-wider text-champagne transition-all duration-300 hover:border-champagne hover:bg-champagne/5 focus:outline-none focus:ring-2 focus:ring-champagne focus:ring-offset-2 focus:ring-offset-background;
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-champagne/40 px-7 py-4 text-sm font-bold uppercase tracking-wider text-champagne transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-champagne hover:bg-champagne/5 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-champagne focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .card-premium {
-    @apply rounded-lg border border-white/5 bg-surface p-7 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-champagne/25 hover:shadow-glow;
+    @apply rounded-lg border border-white/5 bg-surface p-7 shadow-card transition-all duration-300 ease-out hover:-translate-y-1 hover:border-champagne/25 hover:shadow-glow;
   }
 }
 
-/* Respeita usuários com sensibilidade a movimento */
+/* Foco visível consistente para teclado em toda a página (acessibilidade).
+   Elementos que já definem o próprio focus-visible:ring sobrescrevem isto. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid theme("colors.champagne");
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* Respeita usuários com sensibilidade a movimento.
+   Zera animações/transições e o "magnetismo" do CTA principal. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -9,6 +9,7 @@ import ExplodedCounter3D from "./components/ExplodedCounter3D";
 import ApplicationsSection from "./components/ApplicationsSection";
 import TrustNumbers from "./components/TrustNumbers";
 import PortfolioSection from "./components/PortfolioSection";
+import TestimonialsSection from "./components/TestimonialsSection";
 import PartnersSection from "./components/PartnersSection";
 import FinalCTA from "./components/FinalCTA";
 import Footer from "./components/Footer";
@@ -83,6 +84,7 @@ export default function App() {
             <ApplicationsSection />
             <TrustNumbers />
             <PortfolioSection />
+            <TestimonialsSection />
             <PartnersSection />
             <FinalCTA />
           </main>

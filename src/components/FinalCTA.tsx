@@ -1,9 +1,12 @@
 import Reveal from "./Reveal";
 import { siteData, whatsappLink } from "../data/siteData";
 import { openProposal } from "../lib/proposal";
+import { useMagnetic } from "../lib/useMagnetic";
 
 export default function FinalCTA() {
   const { finalCta } = siteData;
+  // Magnetismo leve no CTA principal (desktop/mouse; off em touch e reduced-motion).
+  const magnetRef = useMagnetic<HTMLSpanElement>();
 
   return (
     <section id="contato" className="relative overflow-hidden py-32 md:py-44">
@@ -20,14 +23,16 @@ export default function FinalCTA() {
             {finalCta.subtitle}
           </p>
           <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <button
-              type="button"
-              onClick={openProposal}
-              className="btn-primary w-full sm:w-auto"
-              aria-label="Solicitar proposta"
-            >
-              {finalCta.ctaPrimary}
-            </button>
+            <span ref={magnetRef} className="inline-flex w-full will-change-transform sm:w-auto">
+              <button
+                type="button"
+                onClick={openProposal}
+                className="btn-primary w-full sm:w-auto"
+                aria-label="Solicitar proposta"
+              >
+                {finalCta.ctaPrimary}
+              </button>
+            </span>
             <a
               href={whatsappLink()}
               target="_blank"

@@ -34,12 +34,12 @@ export default function Header() {
         </a>
 
         {/* Navegação desktop */}
-        <nav className="hidden items-center gap-8 lg:flex" aria-label="Navegação principal">
+        <nav className="hidden items-center gap-7 lg:flex" aria-label="Navegação principal">
           {siteData.nav.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              className="text-sm font-medium text-muted transition-colors hover:text-champagne"
+              className="rounded-sm text-sm font-medium text-muted transition-colors hover:text-champagne focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-champagne focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {item.label}
             </a>
@@ -47,7 +47,7 @@ export default function Header() {
           <button
             type="button"
             onClick={openProposal}
-            className="rounded-md border border-champagne/40 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-champagne transition-all hover:border-champagne hover:bg-champagne/5"
+            className="rounded-md border border-champagne/40 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-champagne transition-all hover:border-champagne hover:bg-champagne/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-champagne focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Solicitar proposta"
           >
             Solicitar proposta

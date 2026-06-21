@@ -39,14 +39,16 @@ function windowProgress(p: number, start: number, end: number) {
   return easeOutCubic(clamp01((p - start) / (end - start)));
 }
 
-/* ---------- Acabamentos (metais e superfícies sem textura) ---------- */
+/* ---------- Acabamentos (metais e superfícies sem textura) ----------
+   envMapIntensity reforça o reflexo do Environment nos metais e no vidro,
+   dando um especular mais rico e cinematográfico (sem custo de render). */
 const FIN = {
-  brass: { color: "#d8b070", metalness: 0.75, roughness: 0.28 },
-  brassDark: { color: "#8a6a42", metalness: 0.7, roughness: 0.35 },
+  brass: { color: "#d8b070", metalness: 0.82, roughness: 0.24, envMapIntensity: 1.5 },
+  brassDark: { color: "#8a6a42", metalness: 0.75, roughness: 0.32, envMapIntensity: 1.35 },
   matteWall: { color: "#1c1712", roughness: 0.92, metalness: 0.0 },
-  black: { color: "#0e0b08", roughness: 0.85, metalness: 0.05 },
-  ceramic: { color: "#e6ddcc", roughness: 0.55, metalness: 0.0 },
-  glass: { color: "#cfd8da", roughness: 0.06, metalness: 0.3 },
+  black: { color: "#0e0b08", roughness: 0.82, metalness: 0.08, envMapIntensity: 0.9 },
+  ceramic: { color: "#e6ddcc", roughness: 0.5, metalness: 0.0, envMapIntensity: 0.8 },
+  glass: { color: "#cfd8da", roughness: 0.05, metalness: 0.35, envMapIntensity: 1.6 },
   led: { color: "#ffd9a0", emissive: "#ffbe6e", emissiveIntensity: 2.2 },
   fabric: { color: "#675b4e", roughness: 0.95, metalness: 0.0 },
   fabricLight: { color: "#7a6e5f", roughness: 0.95, metalness: 0.0 },
@@ -201,8 +203,8 @@ function RealismTuning({ enableShadows }: { enableShadows: boolean }) {
   const { scene, gl } = useThree();
 
   useEffect(() => {
-    scene.environmentIntensity = 0.45;
-    gl.toneMappingExposure = 1.12;
+    scene.environmentIntensity = 0.5;
+    gl.toneMappingExposure = 1.14;
     tuneRendererQuality(gl, enableShadows);
     tuneTextureSampling(scene, gl);
     if (!enableShadows) return;
@@ -1366,14 +1368,19 @@ function AssemblyScene({ progress }: { progress: Progress }) {
         shadow-normalBias={0.03}
       />
       <directionalLight position={[-7, 4, -3]} intensity={0.25} color="#8a7a64" />
+      {/* Rim light traseiro-baixo: contorna a silhueta dos móveis com um
+          fio quente de luz, separando-os do fundo (toque cinematográfico). */}
+      <directionalLight position={[0, 2.5, -8]} intensity={0.7} color="#caa15f" />
 
       {/* Reflexos de ambiente (softboxes virtuais — metais, vidro e pedra
           ganham brilho realista sem baixar nenhum HDR externo) */}
       <Environment resolution={64} frames={1}>
-        <Lightformer intensity={2.2} color="#ffdcae" position={[0, 4, -4]} scale={[7, 3, 1]} />
+        <Lightformer intensity={2.3} color="#ffdcae" position={[0, 4, -4]} scale={[7, 3, 1]} />
         <Lightformer intensity={0.9} color="#b0a290" position={[-5, 2, 2]} rotation-y={Math.PI / 2} scale={[4, 2, 1]} />
         <Lightformer intensity={0.7} color="#6e7a86" position={[5, 3, 4]} rotation-y={-Math.PI / 2} scale={[4, 2, 1]} />
         <Lightformer intensity={0.4} color="#2a2017" position={[0, -3, 0]} rotation-x={Math.PI / 2} scale={[8, 8, 1]} />
+        {/* Softbox estreito no teto: realce especular alongado em metais/pedra. */}
+        <Lightformer form="rect" intensity={1.4} color="#fff0d6" position={[0, 7, 0]} rotation-x={Math.PI / 2} scale={[5, 0.5, 1]} />
       </Environment>
       <RealismTuning enableShadows={!mobile} />
       <BlueprintQualityBoost progress={progress} mobile={mobile} />

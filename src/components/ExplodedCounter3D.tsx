@@ -135,23 +135,30 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
 
   return (
     <>
-      <ambientLight intensity={0.35} color="#f2e6d0" />
-      <directionalLight position={[5, 7, 4]} intensity={1.5} color="#ffd9a6" />
-      <directionalLight position={[-5, 3, -4]} intensity={0.25} color="#7e7060" />
+      <ambientLight intensity={0.32} color="#f2e6d0" />
+      {/* Key light quente */}
+      <directionalLight position={[5, 7, 4]} intensity={1.55} color="#ffd9a6" />
+      {/* Fill frio e suave, contrabalança as sombras */}
+      <directionalLight position={[-5, 3, -4]} intensity={0.28} color="#7e7060" />
+      {/* Rim light traseiro: recorta a silhueta do balcão (acabamento cinematográfico) */}
+      <directionalLight position={[-2, 4.5, -6]} intensity={0.9} color="#cfa15f" />
 
       {/* Reflexos de ambiente para metais, pedra e vidro */}
       <Environment resolution={64} frames={1}>
-        <Lightformer intensity={2.2} color="#ffdcae" position={[0, 4, -4]} scale={[7, 3, 1]} />
-        <Lightformer intensity={0.9} color="#b0a290" position={[-5, 2, 2]} rotation-y={Math.PI / 2} scale={[4, 2, 1]} />
+        <Lightformer intensity={2.4} color="#ffdcae" position={[0, 4, -4]} scale={[7, 3, 1]} />
+        <Lightformer intensity={0.95} color="#b0a290" position={[-5, 2, 2]} rotation-y={Math.PI / 2} scale={[4, 2, 1]} />
         <Lightformer intensity={0.7} color="#6e7a86" position={[5, 3, 4]} rotation-y={-Math.PI / 2} scale={[4, 2, 1]} />
+        {/* Softbox estreito no topo: brilho especular alongado nos metais/pedra */}
+        <Lightformer form="rect" intensity={1.6} color="#fff0d6" position={[0, 6, 1]} rotation-x={Math.PI / 2} scale={[3, 0.4, 1]} />
       </Environment>
       <ExposureTuning />
       <FitCamera />
 
-      {/* Sombra de contato fixa sob o balcão (aterra o objeto) */}
+      {/* Sombra de contato fixa sob o balcão (aterra o objeto).
+          Maior e mais suave: difusão mais cinematográfica no piso. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.95, 0]}>
-        <planeGeometry args={[5.2, 3.2]} />
-        <meshBasicMaterial map={T.shadow} transparent opacity={0.6} depthWrite={false} />
+        <planeGeometry args={[5.8, 3.6]} />
+        <meshBasicMaterial map={T.shadow} transparent opacity={0.5} depthWrite={false} />
       </mesh>
 
       <group ref={root} position={[0, -0.2, 0]} rotation={[0.12, 0.5, 0]}>
@@ -164,15 +171,15 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
         <Layer progress={progress} dir={[0, 1.5, 0]}>
           <mesh position={[0, 0.595, 0]}>
             <boxGeometry args={[3.46, 0.09, 1.3]} />
-            <meshStandardMaterial map={T.stone} roughness={0.3} metalness={0.05} />
+            <meshStandardMaterial map={T.stone} roughness={0.26} metalness={0.08} envMapIntensity={1.35} />
           </mesh>
           <mesh position={[-1.695, 0, 0]}>
             <boxGeometry args={[0.07, 1.1, 1.3]} />
-            <meshStandardMaterial map={T.stone} roughness={0.3} />
+            <meshStandardMaterial map={T.stone} roughness={0.28} metalness={0.06} envMapIntensity={1.25} />
           </mesh>
           <mesh position={[1.695, 0, 0]}>
             <boxGeometry args={[0.07, 1.1, 1.3]} />
-            <meshStandardMaterial map={T.stone} roughness={0.3} />
+            <meshStandardMaterial map={T.stone} roughness={0.28} metalness={0.06} envMapIntensity={1.25} />
           </mesh>
         </Layer>
 
@@ -334,12 +341,12 @@ function CounterScene({ progress }: { progress: MotionValue<number> }) {
             <group key={i} position={[x, -0.2, 0]}>
               <mesh position={[0, 0, -0.585]}>
                 <boxGeometry args={[0.34, 0.035, 0.035]} />
-                <meshStandardMaterial color="#d8b070" roughness={0.25} metalness={0.85} />
+                <meshStandardMaterial color="#d8b070" roughness={0.22} metalness={0.9} envMapIntensity={1.5} />
               </mesh>
               {[-0.12, 0.12].map((px, j) => (
                 <mesh key={j} position={[px, 0, -0.558]}>
                   <boxGeometry args={[0.018, 0.018, 0.05]} />
-                  <meshStandardMaterial color="#b8945a" roughness={0.3} metalness={0.85} />
+                  <meshStandardMaterial color="#b8945a" roughness={0.28} metalness={0.9} envMapIntensity={1.4} />
                 </mesh>
               ))}
             </group>

@@ -4,6 +4,39 @@
    Nenhum componente precisa ser alterado para trocar conteúdo.
    ============================================================ */
 
+/** Um projeto do portfólio. `image`/`images` são opcionais — sem foto,
+    o card e o modal caem no `gradient` como fallback elegante. */
+export interface PortfolioProject {
+  id: string;
+  category: string;
+  title: string;
+  /** Fallback visual (classes Tailwind) usado quando não há foto. */
+  gradient: string;
+  /** Foto principal do card e do modal. Ex.: "/portfolio/slug-1.jpg". */
+  image?: string;
+  /** Galeria do modal (lightbox). Inclua a foto principal se quiser que
+      ela também apareça na galeria. */
+  images?: string[];
+  scope: string;
+  materials: string;
+  deadline: string;
+  challenge: string;
+  solution: string;
+}
+
+/** Um depoimento de cliente B2B exibido na prova social. */
+export interface Testimonial {
+  id: string;
+  /** Nome da pessoa. */
+  name: string;
+  /** Cargo + empresa. Ex.: "Diretora de Expansão · Rede Aurora". */
+  role: string;
+  /** Citação curta (1–3 frases). */
+  quote: string;
+  /** Avatar opcional em public/depoimentos/. Sem foto → inicial do nome. */
+  avatar?: string;
+}
+
 export const siteData = {
   brand: {
     // EDITE AQUI: nome da marcenaria
@@ -31,6 +64,7 @@ export const siteData = {
     { label: "Clientes", href: "#clientes" },
     { label: "Processo", href: "#processo" },
     { label: "Portfólio", href: "#portfolio" },
+    { label: "Depoimentos", href: "#depoimentos" },
     { label: "Contato", href: "#contato" },
   ],
 
@@ -211,13 +245,26 @@ export const siteData = {
     eyebrow: "Portfólio",
     title: "Projetos que sustentam operações reais.",
     // EDITE AQUI: cada projeto do portfólio.
-    // "gradient" controla o placeholder visual do card (classes Tailwind).
+    // "gradient" controla o placeholder visual do card (FALLBACK quando
+    //   não houver foto).
+    // "image"  → foto principal do card e do modal (ex.: "/portfolio/slug-1.jpg").
+    // "images" → galeria do modal (lightbox com setas/ESC). Inclua a "image"
+    //   como primeira entrada se quiser que ela apareça também na galeria.
+    // Coloque os arquivos em public/portfolio/ (veja o README de lá).
+    // Enquanto não houver foto, o gradiente garante que nada quebra.
     projects: [
       {
         id: "loja-premium",
         category: "Loja premium",
         title: "Flagship de moda — 280m²",
         gradient: "from-[#3a2a1a] via-[#1B1714] to-[#0d0b09]",
+        // EXEMPLO: troque/adicione as fotos reais em public/portfolio/
+        image: "/portfolio/loja-premium-1.jpg",
+        images: [
+          "/portfolio/loja-premium-1.jpg",
+          "/portfolio/loja-premium-2.jpg",
+          "/portfolio/loja-premium-3.jpg",
+        ],
         scope:
           "Painéis ripados, expositores centrais, balcão caixa, provadores e vitrines internas.",
         materials: "MDF lacca fosca, lâmina de nogueira, latão escovado, LED integrado.",
@@ -232,6 +279,9 @@ export const siteData = {
         category: "Clínica",
         title: "Clínica odontológica — 3 unidades",
         gradient: "from-[#2a2620] via-[#15120f] to-[#0a0908]",
+        // EXEMPLO: troque/adicione as fotos reais em public/portfolio/
+        image: "/portfolio/clinica-1.jpg",
+        images: ["/portfolio/clinica-1.jpg", "/portfolio/clinica-2.jpg"],
         scope:
           "Recepção, painéis de fundo, armários técnicos e mobiliário de consultórios padronizado.",
         materials: "MDF com acabamento antibacteriano, quartzo, perfis de alumínio.",
@@ -246,6 +296,8 @@ export const siteData = {
         category: "Restaurante",
         title: "Restaurante de alta gastronomia — 320m²",
         gradient: "from-[#40301c] via-[#1d1712] to-[#0b0a08]",
+        // EXEMPLO: troque/adicione as fotos reais em public/portfolio/
+        image: "/portfolio/restaurante-1.jpg",
         scope:
           "Bar central, adega climatizada, painéis ripados acústicos e mobiliário do salão.",
         materials: "Carvalho natural, pedra sinterizada, ferro patinado, vidro temperado.",
@@ -297,7 +349,43 @@ export const siteData = {
         solution:
           "Controle dimensional estatístico na produção e instalação silenciosa por etapas.",
       },
-    ],
+    ] as PortfolioProject[],
+  },
+
+  // EDITE AQUI: depoimentos de clientes B2B (prova social).
+  // "avatar" é opcional → coloque o arquivo em public/depoimentos/ ou
+  //   deixe vazio para usar a inicial do nome como fallback elegante.
+  testimonials: {
+    eyebrow: "Prova social",
+    title: "A confiança de quem opera em escala.",
+    items: [
+      {
+        // TODO: depoimento real
+        id: "rede-aurora",
+        name: "Mariana Teixeira",
+        role: "Diretora de Expansão · Rede Aurora",
+        quote:
+          "Entregaram 14 lojas com o mesmo acabamento da primeira. A padronização entre unidades foi o que nos deu segurança para acelerar a expansão.",
+        avatar: "/depoimentos/mariana-teixeira.jpg",
+      },
+      {
+        // TODO: depoimento real
+        id: "studio-arq",
+        name: "Rafael Andrade",
+        role: "Arquiteto titular · Studio Andrade Arquitetura",
+        quote:
+          "Raro encontrar uma marcenaria que lê projeto executivo de verdade. Detalharam encaixes que eu nem havia previsto e respeitaram cada cota.",
+      },
+      {
+        // TODO: depoimento real
+        id: "hotel-meridiano",
+        name: "Cláudia Bianchi",
+        role: "Gerente de Obras · Hotel Meridiano",
+        quote:
+          "Instalaram 42 quartos com o hotel em operação, sem uma reclamação de hóspede. Cronograma cumprido à risca e acabamento impecável.",
+        avatar: "/depoimentos/claudia-bianchi.jpg",
+      },
+    ] as Testimonial[],
   },
 
   partners: {

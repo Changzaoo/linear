@@ -16,10 +16,10 @@ import Footer from "./components/Footer";
 import WhatsAppButton from "./components/WhatsAppButton";
 import ProposalModal from "./components/ProposalModal";
 import { useLenis } from "./lib/useLenis";
-import { openStudio, useStudioOpen } from "./features/orcamento3d/useOrcamento3DStore";
+import { openStudio, useStudioOpen } from "./features/studio3d-core/useOrcamento3DStore";
 
 // Carregados sob demanda — não pesam o bundle inicial do site.
-const Orcamento3DApp = lazy(() => import("./features/orcamento3d/Orcamento3DApp"));
+const Orcamento3DApp = lazy(() => import("./features/studio3d-core/Orcamento3DApp"));
 const Atendimentos3DPage = lazy(() => import("./crm/Atendimentos3D/Atendimentos3DPage"));
 
 function useHash() {

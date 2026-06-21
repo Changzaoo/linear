@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { listArchitects, updateArchitectStatus, onCrmEvent } from "../../features/orcamento3d/crmBridge";
-import type { Architect, ArchitectStatus as Status } from "../../features/orcamento3d/types";
+import { listArchitects, updateArchitectStatus, onCrmEvent } from "../../features/studio3d-core/crmBridge";
+import type { Architect, ArchitectStatus as Status } from "../../features/studio3d-core/types";
 
 const STATUS: { value: Status; label: string; cls: string }[] = [
   { value: "disponivel", label: "Disponível", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40" },

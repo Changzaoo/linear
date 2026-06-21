@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "../../features/orcamento3d/types";
+import type { ProjectStatus } from "../../features/studio3d-core/types";
 
 export const STATUS_META: Record<ProjectStatus, { label: string; cls: string }> = {
   "novo-lead-3d": { label: "Novo Lead 3D", cls: "bg-champagne/15 text-champagne border-champagne/40" },

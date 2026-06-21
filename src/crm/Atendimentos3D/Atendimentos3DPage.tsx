@@ -4,12 +4,12 @@ import {
   listAttendances,
   onCrmEvent,
   initCrmSync,
-} from "../../features/orcamento3d/crmBridge";
-import type { Attendance, ProjectStatus } from "../../features/orcamento3d/types";
+} from "../../features/studio3d-core/crmBridge";
+import type { Attendance, ProjectStatus } from "../../features/studio3d-core/types";
 import Atendimento3DCard from "./Atendimento3DCard";
 import Atendimento3DDetails from "./Atendimento3DDetails";
 import ArchitectStatus from "./ArchitectStatus";
-import NetStatus from "../../features/orcamento3d/NetStatus";
+import NetStatus from "../../features/studio3d-core/NetStatus";
 import { STATUS_META } from "./statusMeta";
 
 const FILTERS: { value: ProjectStatus | "todos"; label: string }[] = [

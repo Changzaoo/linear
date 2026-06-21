@@ -1,5 +1,5 @@
-import type { Attendance } from "../../features/orcamento3d/types";
-import { brl } from "../../features/orcamento3d/pricingEngine";
+import type { Attendance } from "../../features/studio3d-core/types";
+import { brl } from "../../features/studio3d-core/pricingEngine";
 import { STATUS_META, SCORE_META } from "./statusMeta";
 
 export default function Atendimento3DCard({

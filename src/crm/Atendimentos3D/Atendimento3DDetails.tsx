@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
-import type { Attendance, ProjectStatus } from "../../features/orcamento3d/types";
-import { brl } from "../../features/orcamento3d/pricingEngine";
-import { MATERIAL_MAP } from "../../features/orcamento3d/materials";
+import type { Attendance, ProjectStatus } from "../../features/studio3d-core/types";
+import { brl } from "../../features/studio3d-core/pricingEngine";
+import { MATERIAL_MAP } from "../../features/studio3d-core/materials";
 import {
   assignArchitect,
   availableArchitects,
   getAttendance,
   onCrmEvent,
   setAttendanceStatus,
-} from "../../features/orcamento3d/crmBridge";
-import { actions as studioActions, openStudio } from "../../features/orcamento3d/useOrcamento3DStore";
-import { exportHTML } from "../../features/orcamento3d/projectExport";
+} from "../../features/studio3d-core/crmBridge";
+import { actions as studioActions, openStudio } from "../../features/studio3d-core/useOrcamento3DStore";
+import { exportHTML } from "../../features/studio3d-core/projectExport";
 import { STATUS_META } from "./statusMeta";
-import { Btn } from "../../features/orcamento3d/studioUi";
+import { Btn } from "../../features/studio3d-core/studioUi";
 
 const NEXT_STATUS: { status: ProjectStatus; label: string }[] = [
   { status: "em-atendimento", label: "Assumir atendimento" },

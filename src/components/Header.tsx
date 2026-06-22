@@ -44,6 +44,12 @@ export default function Header() {
               {item.label}
             </a>
           ))}
+          <a
+            href="#/area-cliente"
+            className="rounded-sm text-sm font-medium text-muted transition-colors hover:text-champagne focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-champagne focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Área do cliente
+          </a>
           <button
             type="button"
             onClick={openProposal}
@@ -93,6 +99,13 @@ export default function Header() {
                   {item.label}
                 </a>
               ))}
+              <a
+                href="#/area-cliente"
+                onClick={() => setOpen(false)}
+                className="rounded-md px-3 py-3 text-base font-medium text-muted transition-colors hover:bg-surface hover:text-champagne"
+              >
+                Área do cliente
+              </a>
               <button
                 type="button"
                 onClick={() => { setOpen(false); openProposal(); }}

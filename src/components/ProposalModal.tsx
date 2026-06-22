@@ -38,6 +38,7 @@ export default function ProposalModal() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [token, setToken] = useState("");
   const uid = useId();
   const id = (field: string) => `${uid}-${field}`;
   const errorId = id("error");
@@ -50,6 +51,7 @@ export default function ProposalModal() {
       setError("");
       setDone(false);
       setSubmitting(false);
+      setToken("");
       track("proposal_open");
     }
   }, [open]);
@@ -77,7 +79,8 @@ export default function ProposalModal() {
     setError("");
     setSubmitting(true);
     try {
-      await solicitarProposta(form);
+      const created = await solicitarProposta(form);
+      setToken(created?.token || "");
       track("proposal_submit", { tipo_projeto: form.tipo_projeto });
       setDone(true);
     } catch (err: any) {
@@ -126,9 +129,44 @@ export default function ProposalModal() {
                   Recebemos seu pedido de proposta. Nossa equipe comercial entrará em contato em breve
                   pelo WhatsApp ou e-mail informado.
                 </p>
-                <button onClick={closeProposal} className="btn-primary mt-6">
-                  Fechar
-                </button>
+
+                {token && (
+                  <div className="mx-auto mt-5 max-w-sm rounded-xl border border-champagne/20 bg-surfaceSoft/40 p-4 text-left">
+                    <p className="text-sm text-text">
+                      Já pode <strong className="text-champagne">enviar suas plantas e modelos 3D</strong> na
+                      sua área reservada. Guarde seu código de acompanhamento:
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <code className="select-all rounded bg-background/60 px-2 py-1 text-xs text-champagne">
+                        {token}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard?.writeText(token)}
+                        className="text-[11px] text-muted underline hover:text-text"
+                      >
+                        copiar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                  {token && (
+                    <button
+                      onClick={() => {
+                        closeProposal();
+                        window.location.hash = `#/area-cliente?codigo=${token}`;
+                      }}
+                      className="btn-primary"
+                    >
+                      Enviar plantas e arquivos
+                    </button>
+                  )}
+                  <button onClick={closeProposal} className={token ? "btn-secondary" : "btn-primary"}>
+                    Fechar
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={submit}>

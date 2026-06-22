@@ -10,12 +10,12 @@
    (src/shared/contract.ts) — fonte única landing ↔ CRM.
    ============================================================ */
 import { createStore, useStore } from "./tinyStore";
-import { CRM_ENDPOINTS, crmFetch, type ProposalForm } from "../shared/contract";
+import { CRM_ENDPOINTS, crmFetch, type ProposalForm, type ProposalCreated } from "../shared/contract";
 
 export type { ProposalForm } from "../shared/contract";
 
-export async function solicitarProposta(form: ProposalForm): Promise<{ leadId: string }> {
-  return crmFetch<{ leadId: string }>(CRM_ENDPOINTS.solicitarProposta, {
+export async function solicitarProposta(form: ProposalForm): Promise<ProposalCreated> {
+  return crmFetch<ProposalCreated>(CRM_ENDPOINTS.solicitarProposta, {
     method: "POST",
     body: JSON.stringify(form),
   });

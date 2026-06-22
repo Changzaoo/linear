@@ -21,6 +21,7 @@ import { openStudio, useStudioOpen } from "./features/studio3d-core/useOrcamento
 // Carregados sob demanda — não pesam o bundle inicial do site.
 const Orcamento3DApp = lazy(() => import("./features/studio3d-core/Orcamento3DApp"));
 const Atendimentos3DPage = lazy(() => import("./crm/Atendimentos3D/Atendimentos3DPage"));
+const ClientPortal = lazy(() => import("./features/portal/ClientPortal"));
 
 function useHash() {
   const [hash, setHash] = useState(() => (typeof window !== "undefined" ? window.location.hash : ""));
@@ -44,9 +45,10 @@ export default function App() {
   const hash = useHash();
   const studioOpen = useStudioOpen();
   const isCrm = hash.startsWith("#/crm") || hash.startsWith("#crm");
+  const isPortal = hash.startsWith("#/area-cliente") || hash.startsWith("#area-cliente");
 
-  // desliga o scroll suavizado dentro do estúdio/CRM (painéis com scroll próprio)
-  useLenis(!studioOpen && !isCrm);
+  // desliga o scroll suavizado dentro do estúdio/CRM/portal (scroll próprio)
+  useLenis(!studioOpen && !isCrm && !isPortal);
 
   useEffect(() => {
     if (hash.startsWith("#/orcamento-3d") || hash.startsWith("#orcamento-3d")) openStudio();
@@ -66,6 +68,10 @@ export default function App() {
       {isCrm ? (
         <Suspense fallback={<StudioLoading />}>
           <Atendimentos3DPage />
+        </Suspense>
+      ) : isPortal ? (
+        <Suspense fallback={<StudioLoading />}>
+          <ClientPortal />
         </Suspense>
       ) : (
         // Enquanto o estúdio 3D está aberto, escondemos a landing page inteira:

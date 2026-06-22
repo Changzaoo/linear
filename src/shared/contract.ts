@@ -32,6 +32,15 @@ export const CRM_ENDPOINTS = {
   sessaoDoc: (id: string) => `/public/sessoes-3d/${id}/doc`,
   /** POST — sinaliza saída de um participante da sessão */
   sessaoLeave: (id: string) => `/public/sessoes-3d/${id}/leave`,
+
+  /* ----- Portal do Cliente (área reservada p/ envio de arquivos) ----- */
+  /** GET — valida o código e retorna o lead + arquivos já enviados */
+  portal: (token: string) => `/public/portal/${token}`,
+  /** POST (multipart) — envia um ou mais arquivos do cliente */
+  portalArquivos: (token: string) => `/public/portal/${token}/arquivos`,
+  /** GET — baixa/visualiza um arquivo enviado (também usado pelo CRM) */
+  portalArquivo: (token: string, arquivoId: string) =>
+    `/public/portal/${token}/arquivos/${arquivoId}`,
 } as const;
 
 /* ---------- tipos canônicos do documento 3D ---------- */
@@ -95,6 +104,79 @@ export type CrmProjectDoc = {
 export type CrmLeadCreated = {
   leadId: string;
   projetoId: string;
+  /** código de acompanhamento que dá acesso ao Portal do Cliente */
+  token: string;
+};
+
+/** Resposta do formulário "Solicitar proposta" (sem projeto 3D). */
+export type ProposalCreated = {
+  leadId: string;
+  /** código de acompanhamento que dá acesso ao Portal do Cliente */
+  token: string;
+};
+
+/* ---------- Portal do Cliente: envio de arquivos técnicos ---------- */
+
+/** Categorias de documento que o cliente pode enviar para a marcenaria
+    analisar/executar. Espelhadas no CRM (server/src/shared/contract.js). */
+export const ARQUIVO_CATEGORIAS = [
+  { key: "planta_baixa", label: "Planta baixa", hint: "Paredes, ambientes, cotas e mobiliário fixo." },
+  { key: "layout", label: "Planta de layout / leiaute", hint: "Disposição de todos os móveis e circulação." },
+  { key: "cortes", label: "Cortes e seções", hint: "Alturas, pé-direito e níveis (cortes AA, BB)." },
+  { key: "vistas", label: "Vistas / elevações", hint: "Paredes vistas de frente — bancadas, nichos, painéis." },
+  { key: "forro", label: "Planta de forro / cobertura", hint: "Forro, sancas, iluminação e teto." },
+  { key: "eletrica_hidraulica", label: "Elétrica / hidráulica", hint: "Tomadas e pontos de água/gás (furos e recortes)." },
+  { key: "detalhamento", label: "Detalhamento / executivo de marcenaria", hint: "Desenho das peças, chapas, ferragens e acabamentos." },
+  { key: "modelo_3d", label: "Modelo 3D", hint: "SKP, GLB, OBJ, FBX, STL, Revit/IFC, Rhino…" },
+  { key: "render_foto", label: "Renders / fotos do local", hint: "Imagens de referência e fotos do ambiente atual." },
+  { key: "memorial", label: "Memorial / outros documentos", hint: "Memorial descritivo, mapa de acabamentos, planilhas." },
+] as const;
+
+export type ArquivoCategoria = (typeof ARQUIVO_CATEGORIAS)[number]["key"];
+
+/** Extensões aceitas no Portal do Cliente (validadas também no CRM). */
+export const ARQUIVO_EXTENSOES_ACEITAS = [
+  ".pdf",
+  ".dwg", ".dxf",
+  ".skp", ".rvt", ".ifc", ".3dm",
+  ".glb", ".gltf", ".obj", ".fbx", ".stl", ".3ds", ".dae",
+  ".png", ".jpg", ".jpeg", ".webp", ".gif",
+  ".xlsx", ".xls", ".docx", ".doc", ".csv", ".txt",
+  ".zip",
+] as const;
+
+/** Limite por arquivo (bytes). Generoso por causa de modelos 3D (SKP/FBX). */
+export const ARQUIVO_MAX_BYTES = 60 * 1024 * 1024; // 60 MB
+
+/** Metadados de um arquivo enviado pelo cliente (sem o binário). */
+export type PortalArquivo = {
+  id: string;
+  categoria: ArquivoCategoria | string;
+  /** rótulo legível da categoria */
+  categoriaLabel?: string;
+  /** nome original do arquivo */
+  nome: string;
+  /** mime type */
+  tipo: string;
+  /** tamanho em bytes */
+  tamanho: number;
+  /** data de envio (ISO) */
+  criadoEm: string;
+};
+
+/** Dados do lead retornados ao abrir o Portal do Cliente. */
+export type PortalLead = {
+  nome: string;
+  tipoProjeto?: string;
+  status?: string;
+  projetoId?: string;
+  criadoEm?: string;
+};
+
+/** Estado completo do Portal do Cliente (lead + arquivos enviados). */
+export type PortalState = {
+  lead: PortalLead;
+  arquivos: PortalArquivo[];
 };
 
 /* ---------- formulários públicos ---------- */
@@ -165,4 +247,24 @@ export async function crmFetch<T>(path: string, init: RequestInit = {}): Promise
   }
   ensureOk(res, data);
   return data as T;
+}
+
+/** Envia multipart/form-data para o CRM (upload de arquivos). NÃO define
+    Content-Type manualmente — o browser monta o boundary do FormData. */
+export async function crmUpload<T>(path: string, body: FormData): Promise<T> {
+  const res = await fetch(`${CRM_API_BASE}${path}`, { method: "POST", body });
+  const text = await res.text();
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+  ensureOk(res, data);
+  return data as T;
+}
+
+/** URL absoluta para baixar/visualizar um arquivo do Portal do Cliente. */
+export function crmFileUrl(token: string, arquivoId: string): string {
+  return `${CRM_API_BASE}${CRM_ENDPOINTS.portalArquivo(token, arquivoId)}`;
 }

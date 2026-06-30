@@ -41,6 +41,9 @@ export const CRM_ENDPOINTS = {
   /** GET — baixa/visualiza um arquivo enviado (também usado pelo CRM) */
   portalArquivo: (token: string, arquivoId: string) =>
     `/public/portal/${token}/arquivos/${arquivoId}`,
+
+  /** POST — Assistente de IA (chat do site). Toda conversa cai no CRM. */
+  chat: "/public/chat",
 } as const;
 
 /* ---------- tipos canônicos do documento 3D ---------- */
@@ -177,6 +180,35 @@ export type PortalLead = {
 export type PortalState = {
   lead: PortalLead;
   arquivos: PortalArquivo[];
+};
+
+/* ---------- Assistente de IA (chat do site) ---------- */
+
+export type ChatRole = "user" | "assistant";
+
+export type ChatMessage = {
+  role: ChatRole;
+  content: string;
+};
+
+/** Corpo do POST para o chat. */
+export type ChatRequest = {
+  messages: ChatMessage[];
+  /** id da conversa para continuar (devolvido na 1ª resposta) */
+  conversaId?: string;
+  /** página/origem de onde o chat foi aberto */
+  origem?: string;
+};
+
+/** Resposta do agente de IA. */
+export type ChatResponse = {
+  reply: string;
+  /** true quando o agente registrou um lead nesta conversa */
+  registered?: boolean;
+  /** id da conversa (guardar para continuar) */
+  conversaId: string;
+  /** código de acompanhamento, quando um lead é criado */
+  token?: string | null;
 };
 
 /* ---------- formulários públicos ---------- */

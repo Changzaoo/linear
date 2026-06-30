@@ -14,6 +14,7 @@ import PartnersSection from "./components/PartnersSection";
 import FinalCTA from "./components/FinalCTA";
 import Footer from "./components/Footer";
 import WhatsAppButton from "./components/WhatsAppButton";
+import ChatWidget from "./features/chat/ChatWidget";
 import ProposalModal from "./components/ProposalModal";
 import { useLenis } from "./lib/useLenis";
 import { openStudio, useStudioOpen } from "./features/studio3d-core/useOrcamento3DStore";
@@ -95,6 +96,7 @@ export default function App() {
             <FinalCTA />
           </main>
           <Footer />
+          <ChatWidget />
           <WhatsAppButton />
         </>
         )
